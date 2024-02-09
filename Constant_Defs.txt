@@ -1,0 +1,4 @@
+## USEFUL CONSTANTS ##
+4065 = ADC Band Gap
+
+## PORT USAGE 

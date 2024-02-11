@@ -48,6 +48,8 @@ LCD_D6 equ P0.2
 LCD_D7 equ P0.3
 
 ;Initialization Messages
+temperature_message:     db 'To=   C  Tj=   C', 0
+
 
 
 ## INITIALIZATION SUBROUTINES

@@ -55,3 +55,8 @@ temperature_message:     db 'To=   C  Tj=   C', 0
 ## INITIALIZATION SUBROUTINES
 
 ## MAIN 
+main:
+
+    ; initial messages in LCD
+    Set_Cursor(1,1)
+    Send_Constant_String(#temperature_message)

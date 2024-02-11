@@ -15,7 +15,37 @@ $LIST
 ;            PWM5/IC7/SS/P1.5 -|10   11|- P1.4/SDA/FB/PWM1
 ;                               -------
 ;
+;  N76E003 pinout:
+;                               -------
+;                 (FREE) P0.5 -|1    20|- P0.4 (FREE)
+;      Serial to COM TXD/P0.6 -|2    19|- P0.3 LCD.3
+;      Serial to COM RXD/P0.7 -|3    18|- P0.2 LCD.2
+;                    RST P2.0 -|4    17|- P0.1 LCD.1
+;            LM335 INPUT P3.0 -|5    16|- P0.0 LCD.0
+;       PUSHBUTTONS AIN0/P1.7 -|6    15|- P1.0 (FREE)
+;                         GND -|7    14|- P1.1 THERMOCOUPLE INPUT
+;         SPEAKER OUTPUT P1.6 -|8    13|- P1.2 OVEN CONTROL PIN
+;                         VDD -|9    12|- P1.3 LCD RS
+;                 (FREE) P1.5 -|10   11|- P1.4 LCD E
+;                               -------
+;
 ## SYMBOLIC CONSTANTS
+
+; INPUTS
+tempsensor_in equ p3.0
+thermocouple_in equ p1.1
+
+; OUTPUTS
+oven_out equ p1.2
+speaker_out equ p1.6
+
+; LCD
+LCD_RS equ P1.3
+LCD_E equ P1.4
+LCD_D4 equ P0.0
+LCD_D5 equ P0.1
+LCD_D6 equ P0.2
+LCD_D7 equ P0.3
 
 ## INITIALIZATION SUBROUTINES
 

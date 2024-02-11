@@ -49,4 +49,23 @@ LCD_D7 equ P0.3
 
 ## INITIALIZATION SUBROUTINES
 
+; INTERRUPTS
+
+
+; SUBROUTINES
+Average_ADC
+    Load_x(0)
+    mov r5, #255
+Sum_loop:
+    lcall READ_ADC
+    mov y+3, #0
+    mov y+2, #0
+    mov y+1, R1
+    mov y+0, R0
+    lcall add32
+    djnr R5, Sum_loop
+    load_y(255)
+    lcall div32
+ret
+
 ## MAIN 

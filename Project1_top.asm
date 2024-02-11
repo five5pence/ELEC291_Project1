@@ -47,6 +47,9 @@ LCD_D5 equ P0.1
 LCD_D6 equ P0.2
 LCD_D7 equ P0.3
 
+;Initialization Messages
+
+
 ## INITIALIZATION SUBROUTINES
 
 ## MAIN 

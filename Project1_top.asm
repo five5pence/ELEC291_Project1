@@ -15,5 +15,8 @@ $LIST
 ;            PWM5/IC7/SS/P1.5 -|10   11|- P1.4/SDA/FB/PWM1
 ;                               -------
 ;
+## SYMBOLIC CONSTANTS
 
-bhg
+## INITIALIZATION SUBROUTINES
+
+## MAIN 

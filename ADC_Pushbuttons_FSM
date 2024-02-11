@@ -31,7 +31,7 @@ ORG 0x0000
 title:     db 'ADC PUSH BUTTONS', 0
 blank:     db '                ', 0
 
-power:	   db '
+power:	   db 'Power', 0
 
 cseg
 ; These 'equ' must match the hardware wiring
@@ -42,7 +42,7 @@ LCD_D5 equ P0.1
 LCD_D6 equ P0.2
 LCD_D7 equ P0.3
 
-LED_ON equ P1.7
+LED_ON equ P1.8
 
 $NOLIST
 $include(LCD_4bit.inc) ; A library of LCD related functions and utility macros
@@ -70,6 +70,7 @@ Time_refl: ds 1
 sec: ds 1
 temp: ds 1
 
+
 FSM1_state: ds 1
 
 CSEG
@@ -81,6 +82,7 @@ Init_All:
 	mov	P1M2, #0x00
 	mov	P0M1, #0x00
 	mov	P0M2, #0x00
+	
 	
 	orl	CKCON, #0x10 ; CLK is the input for timer 1
 	orl	PCON, #0x80 ; Bit SMOD=1, double baud rate
@@ -258,6 +260,8 @@ main:
 	mov sp, #0x7f
 	lcall Init_All
     lcall LCD_4BIT
+    mov FSM1_state, #0
+    
     
     ; initial messages in LCD
 	Set_Cursor(1, 1)
@@ -265,12 +269,16 @@ main:
 	Set_Cursor(2, 1)
     Send_Constant_String(#blank)
     
-    cpl LED_ON
+    
     mov temp_soak, #10
 	
 Forever:
 	lcall ADC_to_PB
 	lcall Display_PushButtons_ADC
+	
+	mov c, PB0
+    mov P1.6, c
+    
 	
 	; Wait 50 ms between readings
 	mov R2, #50

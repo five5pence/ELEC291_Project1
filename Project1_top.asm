@@ -16,7 +16,7 @@ $LIST
 ;                               -------
 ;
 ;  N76E003 pinout:
-;                               -------
+;                               ----
 ;                 (FREE) P0.5 -|1    20|- P0.4 (FREE)
 ;      Serial to COM TXD/P0.6 -|2    19|- P0.3 LCD.3
 ;      Serial to COM RXD/P0.7 -|3    18|- P0.2 LCD.2
@@ -47,6 +47,11 @@ LCD_D5 equ P0.1
 LCD_D6 equ P0.2
 LCD_D7 equ P0.3
 
+;Initialization Messages
+temperature_message:     db 'To=   C  Tj=   C', 0
+
+
+
 ## INITIALIZATION SUBROUTINES
 
 ; INTERRUPTS
@@ -69,3 +74,8 @@ Sum_loop:
 ret
 
 ## MAIN 
+main:
+
+    ; initial messages in LCD
+    Set_Cursor(1,1)
+    Send_Constant_String(#temperature_message)

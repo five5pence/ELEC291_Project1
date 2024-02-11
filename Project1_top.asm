@@ -16,7 +16,7 @@ $LIST
 ;                               -------
 ;
 ;  N76E003 pinout:
-;                               -------
+;                               ----
 ;                 (FREE) P0.5 -|1    20|- P0.4 (FREE)
 ;      Serial to COM TXD/P0.6 -|2    19|- P0.3 LCD.3
 ;      Serial to COM RXD/P0.7 -|3    18|- P0.2 LCD.2

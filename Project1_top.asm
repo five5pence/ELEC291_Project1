@@ -1,6 +1,16 @@
 $NOLIST
 $MODN76E003
 $LIST
+
+$NOLIST
+$include(math32.inc)
+$LIST
+
+$NOLIST
+$include(LCD_4bit.inc)
+$LIST
+
+
 ;  N76E003 pinout:
 ;                               -------
 ;       PWM2/IC6/T0/AIN4/P0.5 -|1    20|- P0.4/AIN5/STADC/PWM3/IC3
@@ -30,6 +40,15 @@ $LIST
 ;                               -------
 ;
 ## SYMBOLIC CONSTANTS
+CLK           EQU 16600000 ; Microcontroller system oscillator frequency in Hz
+BAUD          EQU 115200 ; Baud rate of UART in bps
+
+DSEG
+; Addresses of custom setting variables
+soak_time ds 1
+soak_temp ds 1
+reflow_time ds 1
+reflow_temp ds 1
 
 ; INPUTS
 tempsensor_in equ p3.0
@@ -39,6 +58,7 @@ thermocouple_in equ p1.1
 oven_out equ p1.2
 speaker_out equ p1.6
 
+CSEG
 ; LCD
 LCD_RS equ P1.3
 LCD_E equ P1.4

@@ -263,57 +263,60 @@ main:
     mov FSM1_state, #0
     
     
+    
     ; initial messages in LCD
 	Set_Cursor(1, 1)
     Send_Constant_String(#Title)
 	Set_Cursor(2, 1)
     Send_Constant_String(#blank)
     
-    
-    mov temp_soak, #10
+
 	
 Forever:
 	lcall ADC_to_PB
 	lcall Display_PushButtons_ADC
-	
-	mov c, PB0
-    mov P1.6, c
-    
-	
+
 	; Wait 50 ms between readings
 	mov R2, #50
 	lcall waitms
 	
-;	ljmp Forever
-	
 ; STATE MACHINE	
 FSM1:
 	mov a, FSM1_state
-	
+
+; off state. Should go to state 1 when start button is pressed (Button 8 right now)
 FSM1_state0:
 	cjne a, #0, FSM1_state1
 	mov pwm, #0
-	jb PB6, FSM1_state0_done
-	jnb PB6, $
+	jb PB0, FSM1_state0_done
 	mov FSM1_state, #1
 FSM1_state0_done:
-	;ljmp FSM1
 	ljmp Forever
-	
+
+; pre-heat state. Should go to state two when temp reaches temp_soak	
 FSM1_state1:
 	cjne a, #1, FSM1_state2
+	
+	clr P1.6
+	
 	mov pwm, #100
 	mov sec, #0
+	
+	; These two lines are temporary. temp should be read from the thermocouple wire
+	mov temp_soak, #10
+	mov temp, #5
+	
 	mov a, temp_soak
-	clr c
+	setb c
 	subb a, temp
-	jnc FSM1_state1_done
+	jc FSM1_state1_done
 	mov FSM1_state, #2
 FSM1_state1_done:
-	;ljmp FSM1
 	ljmp Forever
-	
+
+; State 2 is incomplete
 FSM1_state2:
+setb P1.6
 ljmp Forever
 
 	

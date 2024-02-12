@@ -67,11 +67,23 @@ bcd: ds 5
 BSEG
 mf: dbit 1
 
+; MATH32
 $NOLIST
 $include(math32.inc)
 $LIST
 
-
+; Formatting for LCD display
+; Display: 0000.0000
+Display_formated_BCD:
+	Set_Cursor(2, 5)
+	Display_BCD(bcd+3)
+	Display_BCD(bcd+2)
+	Display_char(#'.')
+	Display_BCD(bcd+1)
+	Display_BCD(bcd+0)
+	Set_Cursor(2, 5)
+	Display_char(#' ')
+	ret
 
 ; INITIALIZATION SUBROUTINES
 Init_All:

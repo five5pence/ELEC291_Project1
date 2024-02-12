@@ -29,15 +29,22 @@ $LIST
 ;                 (FREE) P1.5 -|10   11|- P1.4 LCD E
 ;                               -------
 ;
-## SYMBOLIC CONSTANTS
+ORG 0x0000
+    ljmp main
+
+; Initialization Messages
+temperature_message:     db 'To=   C  Tj=   C', 0
+cseg
+
+; SYMBOLIC CONSTANTS
 
 ; INPUTS
-tempsensor_in equ p3.0
-thermocouple_in equ p1.1
+tempsensor_in equ P3.0
+thermocouple_in equ P1.1
 
 ; OUTPUTS
-oven_out equ p1.2
-speaker_out equ p1.6
+oven_out equ P1.2
+speaker_out equ P1.6
 
 ; LCD
 LCD_RS equ P1.3
@@ -47,16 +54,44 @@ LCD_D5 equ P0.1
 LCD_D6 equ P0.2
 LCD_D7 equ P0.3
 
-;Initialization Messages
-temperature_message:     db 'To=   C  Tj=   C', 0
+$NOLIST
+$include(LCD_4BIT.inc)
+$LIST
+
+; These register definitions needed by 'math32.inc'
+DSEG at 30H
+x:   ds 4
+y:   ds 4
+bcd: ds 5
+
+BSEG
+mf: dbit 1
+
+$NOLIST
+$include(math32.inc)
+$LIST
 
 
 
-## INITIALIZATION SUBROUTINES
+; INITIALIZATION SUBROUTINES
+Init_All:
+	; Configure all the pins for biderectional I/O
+	mov	P3M1, #0x00
+	mov	P3M2, #0x00
+	mov	P1M1, #0x00
+	mov	P1M2, #0x00
+	mov	P0M1, #0x00
+	mov	P0M2, #0x00
 
-## MAIN 
+    ret
+
+; MAIN 
 main:
-
+	mov sp, #0x7f
+    lcall Init_All
+    lcall LCD_4BIT
     ; initial messages in LCD
-    Set_Cursor(1,1)
+    Set_Cursor(1, 1)
     Send_Constant_String(#temperature_message)
+
+END

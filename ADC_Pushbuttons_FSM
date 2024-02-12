@@ -309,15 +309,35 @@ FSM1_state1:
 	mov a, temp_soak
 	setb c
 	subb a, temp
-	jc FSM1_state1_done
+	jnc FSM1_state1_done
 	mov FSM1_state, #2
 FSM1_state1_done:
 	ljmp Forever
 
-; State 2 is incomplete
+; State 2
 FSM1_state2:
-setb P1.6
-ljmp Forever
+	setb P1.6 ;speaker
+	cjne a, #2, FSM1_state3
+	mov pwm, #20
+	mov a, Time_soak
+	clr c
+	subb a, sec
+	jnc FSM_state2_done
+	mov FSM1_state, #3
+FSM1_state2_done:
+	ljmp Forever
+
+
+
+;State 3
+FSM_state3:
+	cjne a, #3, FSM1_state4
+	mov pwm, #100
+	mov sec, #0
+	mov a, Temp_refl
+	
+
+
 
 	
 END

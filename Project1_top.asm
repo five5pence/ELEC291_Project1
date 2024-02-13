@@ -2,13 +2,6 @@ $NOLIST
 $MODN76E003
 $LIST
 
-$NOLIST
-$include(math32.inc)
-$LIST
-
-$NOLIST
-$include(LCD_4bit.inc)
-$LIST
 
 
 ;  N76E003 pinout:
@@ -78,6 +71,10 @@ LCD_D5 equ P0.1
 LCD_D6 equ P0.2
 LCD_D7 equ P0.3
 
+$NOLIST
+$include(LCD_4BIT.inc)
+$LIST
+
 ; Flash instructions
 PAGE_ERASE_AP   EQU 00100010b
 BYTE_PROGRAM_AP EQU 00100001b
@@ -115,6 +112,11 @@ PB4: dbit 1
 PB5: dbit 1
 PB6: dbit 1
 PB7: dbit 1
+
+; MATH32
+$NOLIST
+$include(math32.inc)
+$LIST
 
 ; Blank Macro
 Left_blank mac

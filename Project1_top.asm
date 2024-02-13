@@ -135,15 +135,7 @@ Display_formated_BCD_To:
 	Display_char(#'.')
 	Display_BCD(bcd+1)
 
-	Set_Cursor(1, 3)
-	Left_blank(bcd+3, skip_blank2)
-	mov a, bcd+0
-	anl a, #0f0h
-	swap a
-	jnz skip_blank2
-	Display_char(#' ')
-	
-	skip_blank2:
+
 	ret
 	
 ; Formatting to display ambient temperature
@@ -322,7 +314,7 @@ main:
     Send_Constant_String(#temperature_message)
 
 	mov FSM1_state, #0
-    mov Temp_soak, #150
+    mov Temp_soak, #50
 	mov Time_soak, #60
 	mov Temp_refl, #220
 	mov Time_refl, #45
@@ -418,13 +410,10 @@ Forever:
 	Set_Cursor(1, 3)
 	lcall Display_formated_BCD_To
 
-	; Storing the thermocouple temperature into var temp
-	lcall bcd2hex
-
-	mov temp+0, x+0
-	mov temp+1, x+1
-	mov temp+2, x+2
-	mov temp+3, x+3
+	; Storing the thermocouple temperature into var temp 
+	Load_y(10000)
+	lcall div32
+	mov temp, x+0
 	
 	; Wait 100 ms between readings
 	mov R2, #100
@@ -457,8 +446,8 @@ FSM1_state1:
 	mov sec, #0
 	
 	; These two lines are temporary. temp should be read from the thermocouple wire
-	mov temp_soak, #10
-	mov temp, #15
+	mov temp_soak, #50
+	;mov temp, #15
 	
 	mov a, temp_soak
 	setb c

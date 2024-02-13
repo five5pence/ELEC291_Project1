@@ -101,11 +101,11 @@
 0046             95   Time_refl: ds 1
 0047             96   
 0047             97   sec: ds 1
-0048             98   temp: ds 1
-0049             99   
-0049            100   
-0049            101   FSM1_state: ds 1
-004A            102   
+0048             98   temp: ds 2
+004A             99   
+004A            100   
+004A            101   FSM1_state: ds 1
+004B            102   
 0000            103   BSEG
 0000            104   mf: dbit 1
 0001            105   
@@ -477,10 +477,10 @@
 0577 D082       441            pop dpl
 0579 D083       441            pop dph
 057B            442   
-057B 754900     443            mov FSM1_state, #0
+057B 754A00     443            mov FSM1_state, #0
 057E 754332     444       mov Temp_soak, #50
 0581 75443C     445            mov Time_soak, #60
-0584 7545DC     446            mov Temp_refl, #220
+0584 7545C8     446            mov Temp_refl, #200
 0587 75462D     447            mov Time_refl, #45
 058A 754700     448            mov sec, #0
 058D            449   
@@ -612,202 +612,200 @@
 0692 753600     541            mov y+2, #low (10000 / 0x10000) 
 0695 753700     541            mov y+3, #high(10000 / 0x10000) 
 0698 1202FF     542            lcall div32
-069B 853048     543            mov temp, x+0
-069E            544            
-069E            545            ; Wait 100 ms between readings
-069E 7A64       546            mov R2, #100
-06A0 1204E2     547            lcall waitms
-06A3            548            
-06A3            549   ; STATE MACHINE  
-06A3            550   FSM1:
-06A3 E549       551            mov a, FSM1_state
-06A5            552   
-06A5            553   ; off state. Should go to state 1 when start button is pressed (Button 8 right now)
-06A5            554   FSM1_state0:
-06A5 B40028     555            cjne a, #0, FSM1_state1
-06A8 C0E0       556            push acc
-06AA 7405       556            mov a, #5
-06AC 14         556            dec a
-06AD 1200DB     556            lcall ?Set_Cursor_2 ; Select column and row
-06B0 D0E0       556            pop acc
-06B2 C083       557            push dph
-06B4 C082       557            push dpl
-06B6 C0E0       557            push acc
-06B8 900014     557            mov dptr, #state0
-06BB 1200D0     557            lcall ?Send_Constant_String
-06BE D0E0       557            pop acc
-06C0 D082       557            pop dpl
-06C2 D083       557            pop dph
-06C4 754100     558            mov pwm, #0
-06C7 200103     559            jb PB0, FSM1_state0_done
-06CA 754901     560            mov FSM1_state, #1
-06CD            561   FSM1_state0_done:
-06CD 02058D     562            ljmp Forever
-06D0            563   
-06D0            564   ; pre-heat state. Should go to state two when temp reaches temp_soak     
-06D0            565   FSM1_state1:
-06D0 B40134     566            cjne a, #1, FSM1_state2
-06D3 C0E0       567            push acc
-06D5 7405       567            mov a, #5
-06D7 14         567            dec a
-06D8 1200DB     567            lcall ?Set_Cursor_2 ; Select column and row
-06DB D0E0       567            pop acc
-06DD C083       568            push dph
-06DF C082       568            push dpl
-06E1 C0E0       568            push acc
-06E3 90001C     568            mov dptr, #state1
-06E6 1200D0     568            lcall ?Send_Constant_String
-06E9 D0E0       568            pop acc
-06EB D082       568            pop dpl
-06ED D083       568            pop dph
-06EF            569            
-06EF C296       570            clr P1.6
-06F1            571            
-06F1 754164     572            mov pwm, #100
-06F4 754700     573            mov sec, #0
-06F7            574            
-06F7            575            ; These two lines are temporary. temp should be read from the thermocouple wire
-06F7 754332     576            mov temp_soak, #50
-06FA            577            ;mov temp, #15
-06FA            578            
-06FA E543       579            mov a, temp_soak
-06FC D3         580            setb c
-06FD 9548       581            subb a, temp
-06FF 5003       582            jnc FSM1_state1_done
-0701 754902     583            mov FSM1_state, #2
-0704            584   FSM1_state1_done:
-0704 02058D     585            ljmp Forever
-0707            586   
-0707            587   ; State 2
-0707            588   FSM1_state2:
-0707 D296       589            setb P1.6 ;speaker
-0709 B4023A     590            cjne a, #2, FSM1_state3
-070C C0E0       591            push acc
-070E 7405       591            mov a, #5
-0710 14         591            dec a
-0711 1200DB     591            lcall ?Set_Cursor_2 ; Select column and row
-0714 D0E0       591            pop acc
-0716 C083       592            push dph
-0718 C082       592            push dpl
-071A C0E0       592            push acc
-071C 900024     592            mov dptr, #state2
-071F 1200D0     592            lcall ?Send_Constant_String
-0722 D0E0       592            pop acc
-0724 D082       592            pop dpl
-0726 D083       592            pop dph
-0728 754114     593            mov pwm, #20
-072B            594            
-072B E547       595            mov a, sec
-072D 2401       596            add a, #1
-072F F547       597            mov sec, a
-0731            598   
-0731 7A32       599            mov R2, #50
-0733 1204E2     600            lcall waitms
-0736            601   
-0736 E544       602            mov a, Time_soak
-0738 C3         603            clr c
-0739 9547       604            subb a, sec
-073B 5003       605            jnc FSM1_state2_done
-073D 754903     606            mov FSM1_state, #3
-0740            607   FSM1_state2_done:
-0740 02058D     608            ljmp Forever
-0743            609   
-0743            610   ;DELETE
-0743            611   jump:
-0743 0206A5     612   ljmp FSM1_state0         
-0746            613   
-0746            614   ;State 3
-0746            615   FSM1_state3:
-0746 B40332     616            cjne a, #3, FSM1_state4
-0749 C0E0       617            push acc
-074B 7405       617            mov a, #5
-074D 14         617            dec a
-074E 1200DB     617            lcall ?Set_Cursor_2 ; Select column and row
-0751 D0E0       617            pop acc
-0753 C083       618            push dph
-0755 C082       618            push dpl
-0757 C0E0       618            push acc
-0759 90002C     618            mov dptr, #state3
-075C 1200D0     618            lcall ?Send_Constant_String
-075F D0E0       618            pop acc
-0761 D082       618            pop dpl
-0763 D083       618            pop dph
-0765 754164     619            mov pwm, #100
-0768 754700     620            mov sec, #0
-076B            621            
-076B 7548FA     622            mov temp, #250
-076E            623            
-076E E545       624            mov a, Temp_refl
-0770 C3         625            clr c
-0771 9548       626            subb a, temp
-0773 5003       627            jnc FSM1_state3_done
-0775 754904     628            mov FSM1_state, #4
-0778            629   FSM1_state3_done:
-0778 02058D     630            ljmp Forever
+069B 853048     543            mov temp+0, x+0
+069E 853149     544            mov temp+1, x+1
+06A1            545            
+06A1            546            ; Wait 100 ms between readings
+06A1 7A64       547            mov R2, #100
+06A3 1204E2     548            lcall waitms
+06A6            549            
+06A6            550   ; STATE MACHINE  
+06A6            551   FSM1:
+06A6 E54A       552            mov a, FSM1_state
+06A8            553   
+06A8            554   ; off state. Should go to state 1 when start button is pressed (Button 8 right now)
+06A8            555   FSM1_state0:
+06A8 B40028     556            cjne a, #0, FSM1_state1
+06AB C0E0       557            push acc
+06AD 7405       557            mov a, #5
+06AF 14         557            dec a
+06B0 1200DB     557            lcall ?Set_Cursor_2 ; Select column and row
+06B3 D0E0       557            pop acc
+06B5 C083       558            push dph
+06B7 C082       558            push dpl
+06B9 C0E0       558            push acc
+06BB 900014     558            mov dptr, #state0
+06BE 1200D0     558            lcall ?Send_Constant_String
+06C1 D0E0       558            pop acc
+06C3 D082       558            pop dpl
+06C5 D083       558            pop dph
+06C7 754100     559            mov pwm, #0
+06CA 200103     560            jb PB0, FSM1_state0_done
+06CD 754A01     561            mov FSM1_state, #1
+06D0            562   FSM1_state0_done:
+06D0 02058D     563            ljmp Forever
+06D3            564   
+06D3            565   ; pre-heat state. Should go to state two when temp reaches temp_soak     
+06D3            566   FSM1_state1:
+06D3 B40134     567            cjne a, #1, FSM1_state2
+06D6 C0E0       568            push acc
+06D8 7405       568            mov a, #5
+06DA 14         568            dec a
+06DB 1200DB     568            lcall ?Set_Cursor_2 ; Select column and row
+06DE D0E0       568            pop acc
+06E0 C083       569            push dph
+06E2 C082       569            push dpl
+06E4 C0E0       569            push acc
+06E6 90001C     569            mov dptr, #state1
+06E9 1200D0     569            lcall ?Send_Constant_String
+06EC D0E0       569            pop acc
+06EE D082       569            pop dpl
+06F0 D083       569            pop dph
+06F2            570            
+06F2 C296       571            clr P1.6
+06F4            572            
+06F4 754164     573            mov pwm, #100
+06F7 754700     574            mov sec, #0
+06FA            575            
+06FA            576            ; These two lines are temporary. temp should be read from the thermocouple wire
+06FA 754364     577            mov temp_soak, #100
+06FD            578            
+06FD E543       579            mov a, temp_soak
+06FF D3         580            setb c
+0700 9548       581            subb a, temp
+0702 5003       582            jnc FSM1_state1_done
+0704 754A02     583            mov FSM1_state, #2
+0707            584   FSM1_state1_done:
+0707 02058D     585            ljmp Forever
+070A            586   
+070A            587   ; State 2
+070A            588   FSM1_state2:
+070A D296       589            setb P1.6 ;speaker
+070C B4023A     590            cjne a, #2, FSM1_state3
+070F C0E0       591            push acc
+0711 7405       591            mov a, #5
+0713 14         591            dec a
+0714 1200DB     591            lcall ?Set_Cursor_2 ; Select column and row
+0717 D0E0       591            pop acc
+0719 C083       592            push dph
+071B C082       592            push dpl
+071D C0E0       592            push acc
+071F 900024     592            mov dptr, #state2
+0722 1200D0     592            lcall ?Send_Constant_String
+0725 D0E0       592            pop acc
+0727 D082       592            pop dpl
+0729 D083       592            pop dph
+072B 754114     593            mov pwm, #20
+072E            594            
+072E E547       595            mov a, sec
+0730 2401       596            add a, #1
+0732 F547       597            mov sec, a
+0734            598   
+0734 7A32       599            mov R2, #50
+0736 1204E2     600            lcall waitms
+0739            601   
+0739 E544       602            mov a, Time_soak
+073B C3         603            clr c
+073C 9547       604            subb a, sec
+073E 5003       605            jnc FSM1_state2_done
+0740 754A03     606            mov FSM1_state, #3
+0743            607   FSM1_state2_done:
+0743 02058D     608            ljmp Forever
+0746            609   
+0746            610   ;DELETE
+0746            611   jump:
+0746 0206A8     612   ljmp FSM1_state0         
+0749            613   
+0749            614   ;State 3
+0749            615   FSM1_state3:
+0749 B4032F     616            cjne a, #3, FSM1_state4
+074C C0E0       617            push acc
+074E 7405       617            mov a, #5
+0750 14         617            dec a
+0751 1200DB     617            lcall ?Set_Cursor_2 ; Select column and row
+0754 D0E0       617            pop acc
+0756 C083       618            push dph
+0758 C082       618            push dpl
+075A C0E0       618            push acc
+075C 90002C     618            mov dptr, #state3
+075F 1200D0     618            lcall ?Send_Constant_String
+0762 D0E0       618            pop acc
+0764 D082       618            pop dpl
+0766 D083       618            pop dph
+0768 754164     619            mov pwm, #100
+076B 754700     620            mov sec, #0
+076E            621            
+076E            622            
+076E E545       623            mov a, Temp_refl
+0770 C3         624            clr c
+0771 9548       625            subb a, temp
+0773 5003       626            jnc FSM1_state3_done
+0775 754A04     627            mov FSM1_state, #4
+0778            628   FSM1_state3_done:
+0778 02058D     629            ljmp Forever
+077B            630   
 077B            631   
-077B            632   
-077B            633   ;State 4
-077B            634   FSM1_state4:
-077B B40437     635            cjne a, #4, FSM1_state5
-077E C0E0       636            push acc
-0780 7405       636            mov a, #5
-0782 14         636            dec a
-0783 1200DB     636            lcall ?Set_Cursor_2 ; Select column and row
-0786 D0E0       636            pop acc
-0788 C083       637            push dph
-078A C082       637            push dpl
-078C C0E0       637            push acc
-078E 900034     637            mov dptr, #state4
-0791 1200D0     637            lcall ?Send_Constant_String
-0794 D0E0       637            pop acc
-0796 D082       637            pop dpl
-0798 D083       637            pop dph
-079A 754114     638            mov pwm, #20
-079D            639            
-079D E547       640            mov a, sec
-079F 2401       641            add a, #1
-07A1 F547       642            mov sec, a
-07A3            643   
-07A3 7A32       644            mov R2, #50
-07A5 1204E2     645            lcall waitms
-07A8            646            
-07A8 E546       647            mov a, Time_refl
-07AA C3         648            clr c
-07AB 9547       649            subb a,sec
-07AD 5003       650            jnc FSM1_state4_done
-07AF 754905     651            mov FSM1_state, #5
-07B2            652   FSM1_state4_done:
-07B2 02058D     653            ljmp Forever
-07B5            654            
-07B5            655   FSM1_state5:
-07B5 B4058B     656            cjne a, #5, jump
-07B8 C0E0       657            push acc
-07BA 7405       657            mov a, #5
-07BC 14         657            dec a
-07BD 1200DB     657            lcall ?Set_Cursor_2 ; Select column and row
-07C0 D0E0       657            pop acc
-07C2 C083       658            push dph
-07C4 C082       658            push dpl
-07C6 C0E0       658            push acc
-07C8 90003C     658            mov dptr, #state5
-07CB 1200D0     658            lcall ?Send_Constant_String
-07CE D0E0       658            pop acc
-07D0 D082       658            pop dpl
-07D2 D083       658            pop dph
-07D4 754100     659            mov pwm, #0
+077B            632   ;State 4
+077B            633   FSM1_state4:
+077B B40437     634            cjne a, #4, FSM1_state5
+077E C0E0       635            push acc
+0780 7405       635            mov a, #5
+0782 14         635            dec a
+0783 1200DB     635            lcall ?Set_Cursor_2 ; Select column and row
+0786 D0E0       635            pop acc
+0788 C083       636            push dph
+078A C082       636            push dpl
+078C C0E0       636            push acc
+078E 900034     636            mov dptr, #state4
+0791 1200D0     636            lcall ?Send_Constant_String
+0794 D0E0       636            pop acc
+0796 D082       636            pop dpl
+0798 D083       636            pop dph
+079A 754114     637            mov pwm, #20
+079D            638            
+079D E547       639            mov a, sec
+079F 2401       640            add a, #1
+07A1 F547       641            mov sec, a
+07A3            642   
+07A3 7A32       643            mov R2, #50
+07A5 1204E2     644            lcall waitms
+07A8            645            
+07A8 E546       646            mov a, Time_refl
+07AA C3         647            clr c
+07AB 9547       648            subb a,sec
+07AD 5003       649            jnc FSM1_state4_done
+07AF 754A05     650            mov FSM1_state, #5
+07B2            651   FSM1_state4_done:
+07B2 02058D     652            ljmp Forever
+07B5            653            
+07B5            654   FSM1_state5:
+07B5 B4058E     655            cjne a, #5, jump
+07B8 C0E0       656            push acc
+07BA 7405       656            mov a, #5
+07BC 14         656            dec a
+07BD 1200DB     656            lcall ?Set_Cursor_2 ; Select column and row
+07C0 D0E0       656            pop acc
+07C2 C083       657            push dph
+07C4 C082       657            push dpl
+07C6 C0E0       657            push acc
+07C8 90003C     657            mov dptr, #state5
+07CB 1200D0     657            lcall ?Send_Constant_String
+07CE D0E0       657            pop acc
+07D0 D082       657            pop dpl
+07D2 D083       657            pop dph
+07D4 754100     658            mov pwm, #0
+07D7            659            
 07D7            660            
-07D7 754846     661            mov temp, #70
-07DA            662            
-07DA 743C       663            mov a, #60
-07DC C3         664            clr c
-07DD 9548       665            subb a, temp
-07DF 5003       666            jnc FSM1_state5_done
-07E1 754900     667            mov FSM1_state,#0
-07E4            668   FSM1_state5_done:
-07E4 120402     669            lcall Save_Variables ; Save variables in flash memory
-07E7 02058D     670            ljmp Forever
-07EA            671            
-07EA            672   
-07EA            673   
-07EA            674   ;Any additions to be checked
-07EA            675   EN
+07D7 743C       661            mov a, #60
+07D9 C3         662            clr c
+07DA 9548       663            subb a, temp
+07DC 4003       664            jc FSM1_state5_done
+07DE 754A00     665            mov FSM1_state,#0
+07E1            666   FSM1_state5_done:
+07E1 120402     667            lcall Save_Variables ; Save variables in flash memory
+07E4 02058D     668            ljmp Forever
+07E7            669            
+07E7            670   
+07E7            671   
+07E7            672   ;Any additions to be checked
+07E7            673   EN

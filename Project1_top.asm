@@ -95,7 +95,7 @@ Temp_refl: ds 1
 Time_refl: ds 1
 
 sec: ds 1
-temp: ds 1
+temp: ds 2
 
 
 FSM1_state: ds 1
@@ -443,7 +443,7 @@ main:
 	mov FSM1_state, #0
     mov Temp_soak, #50
 	mov Time_soak, #60
-	mov Temp_refl, #220
+	mov Temp_refl, #200
 	mov Time_refl, #45
 	mov sec, #0
 
@@ -540,7 +540,8 @@ Forever:
 	; Storing the thermocouple temperature into var temp 
 	Load_y(10000)
 	lcall div32
-	mov temp, x+0
+	mov temp+0, x+0
+	mov temp+1, x+1
 	
 	; Wait 100 ms between readings
 	mov R2, #100
@@ -573,8 +574,7 @@ FSM1_state1:
 	mov sec, #0
 	
 	; These two lines are temporary. temp should be read from the thermocouple wire
-	mov temp_soak, #50
-	;mov temp, #15
+	mov temp_soak, #100
 	
 	mov a, temp_soak
 	setb c
@@ -619,7 +619,6 @@ FSM1_state3:
 	mov pwm, #100
 	mov sec, #0
 	
-	mov temp, #250
 	
 	mov a, Temp_refl
 	clr c
@@ -658,12 +657,11 @@ FSM1_state5:
 	Send_Constant_String(#state5)
 	mov pwm, #0
 	
-	mov temp, #70
 	
 	mov a, #60
 	clr c
 	subb a, temp
-	jnc FSM1_state5_done
+	jc FSM1_state5_done
 	mov FSM1_state,#0
 FSM1_state5_done:
 	lcall Save_Variables ; Save variables in flash memory

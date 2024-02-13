@@ -291,6 +291,7 @@ main:
 	mov Time_soak, #60
 	mov Temp_refl, #220
 	mov Time_refl, #45
+	mov sec, #0
 
 Forever:
 	lcall ADC_to_PB
@@ -431,8 +432,13 @@ FSM1_state2:
 	Send_Constant_String(#state2)
 	mov pwm, #20
 	
-	mov sec, #70
-	
+	mov a, sec
+	add a, #1
+	mov sec, a
+
+	mov R2, #50
+	lcall waitms
+
 	mov a, Time_soak
 	clr c
 	subb a, sec
@@ -471,7 +477,12 @@ FSM1_state4:
 	Send_Constant_String(#state4)
 	mov pwm, #20
 	
-	mov sec, #70
+	mov a, sec
+	add a, #1
+	mov sec, a
+
+	mov R2, #50
+	lcall waitms
 	
 	mov a, Time_refl
 	clr c

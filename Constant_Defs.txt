@@ -42,3 +42,8 @@ PB3 -
 PB2 - 
 PB1 -
 PB0 - 
+
+TIMERS
+Timer0 - Checking reflow/soak times for FSM
+Timer1 - Sending the pulse for the speaker
+TImer2 - Power

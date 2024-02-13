@@ -29,11 +29,24 @@ $LIST
 ;                 (FREE) P1.5 -|10   11|- P1.4 LCD E
 ;                               -------
 ;
+CLK               EQU 16600000 ; Microcontroller system frequency in Hz
+BAUD              EQU 115200 ; Baud rate of UART in bps
+TIMER1_RELOAD     EQU (0x100-(CLK/(16*BAUD)))
+TIMER0_RELOAD_1MS EQU (0x10000-(CLK/1000))
+
 ORG 0x0000
     ljmp main
 
 ; Initialization Messages
 temperature_message:     db 'To=   C  Tj=   C', 0
+
+state0:	   db 'State 0', 0
+state1:	   db 'State 1', 0
+state2:	   db 'State 2', 0
+state3:	   db 'State 3', 0
+state4:	   db 'State 4', 0
+state5:	   db 'State 5', 0
+
 cseg
 
 ; SYMBOLIC CONSTANTS
@@ -64,8 +77,32 @@ x:   ds 4
 y:   ds 4
 bcd: ds 5
 
+DSEG
+pwm: ds 1
+state: ds 1
+temp_soak: ds 1
+Time_soak: ds 1
+Temp_refl: ds 1
+Time_refl: ds 1
+
+sec: ds 1
+temp: ds 1
+
+
+FSM1_state: ds 1
+
 BSEG
 mf: dbit 1
+
+; These eight bit variables store the value of the pushbuttons after calling 'ADC_to_PB' below
+PB0: dbit 1
+PB1: dbit 1
+PB2: dbit 1
+PB3: dbit 1
+PB4: dbit 1
+PB5: dbit 1
+PB6: dbit 1
+PB7: dbit 1
 
 ; MATH32
 $NOLIST
@@ -95,7 +132,142 @@ Init_All:
 	mov	P0M1, #0x00
 	mov	P0M2, #0x00
 
+	orl	CKCON, #0x10 ; CLK is the input for timer 1
+	orl	PCON, #0x80 ; Bit SMOD=1, double baud rate
+	mov	SCON, #0x52
+	anl	T3CON, #0b11011111
+	anl	TMOD, #0x0F ; Clear the configuration bits for timer 1
+	orl	TMOD, #0x20 ; Timer 1 Mode 2
+	mov	TH1, #TIMER1_RELOAD ; TH1=TIMER1_RELOAD;
+	setb TR1
+	
+	; Using timer 0 for delay functions.  Initialize here:
+	clr	TR0 ; Stop timer 0
+	orl	CKCON,#0x08 ; CLK is the input for timer 0
+	anl	TMOD,#0xF0 ; Clear the configuration bits for timer 0
+	orl	TMOD,#0x01 ; Timer 0 in Mode 1: 16-bit timer
+	
+	; Initialize and start the ADC:
+	
+	; AIN0 is connected to P1.7.  Configure P1.7 as input.
+	orl	P1M1, #0b10000000
+	anl	P1M2, #0b01111111
+	
+	; AINDIDS select if some pins are analog inputs or digital I/O:
+	mov AINDIDS, #0x00 ; Disable all analog inputs
+	orl AINDIDS, #0b00000001 ; Using AIN0
+	orl ADCCON1, #0x01 ; Enable ADC
+
     ret
+
+
+wait_1ms:
+	clr	TR0 ; Stop timer 0
+	clr	TF0 ; Clear overflow flag
+	mov	TH0, #high(TIMER0_RELOAD_1MS)
+	mov	TL0,#low(TIMER0_RELOAD_1MS)
+	setb TR0
+	jnb	TF0, $ ; Wait for overflow
+	ret
+
+; Wait the number of miliseconds in R2
+waitms:
+	lcall wait_1ms
+	djnz R2, waitms
+	ret
+
+ADC_to_PB:
+	anl ADCCON0, #0xF0
+	orl ADCCON0, #0x00 ; Select AIN0
+	
+	clr ADCF
+	setb ADCS   ; ADC start trigger signal
+    jnb ADCF, $ ; Wait for conversion complete
+
+	setb PB7
+	setb PB6
+	setb PB5
+	setb PB4
+	setb PB3
+	setb PB2
+	setb PB1
+	setb PB0
+	
+	; Check PB7
+ADC_to_PB_L7:
+	clr c
+	mov a, ADCRH
+	subb a, #0xf0
+	jc ADC_to_PB_L6
+	clr PB7
+	ret
+
+	; Check PB6
+ADC_to_PB_L6:
+	clr c
+	mov a, ADCRH
+	subb a, #0xd0
+	jc ADC_to_PB_L5
+	clr PB6
+	ret
+
+	; Check PB5
+ADC_to_PB_L5:
+	clr c
+	mov a, ADCRH
+	subb a, #0xb0
+	jc ADC_to_PB_L4
+	clr PB5
+	ret
+
+	; Check PB4
+ADC_to_PB_L4:
+	clr c
+	mov a, ADCRH
+	subb a, #0x90
+	jc ADC_to_PB_L3
+	clr PB4
+	ret
+
+	; Check PB3
+ADC_to_PB_L3:
+	clr c
+	mov a, ADCRH
+	subb a, #0x70
+	jc ADC_to_PB_L2
+	clr PB3
+	ret
+
+	; Check PB2
+ADC_to_PB_L2:
+	clr c
+	mov a, ADCRH
+	subb a, #0x50
+	jc ADC_to_PB_L1
+	clr PB2
+	ret
+
+	; Check PB1
+ADC_to_PB_L1:
+	clr c
+	mov a, ADCRH
+	subb a, #0x30
+	jc ADC_to_PB_L0
+	clr PB1
+	ret
+
+	; Check PB0
+ADC_to_PB_L0:
+	clr c
+	mov a, ADCRH
+	subb a, #0x10
+	jc ADC_to_PB_Done
+	clr PB0
+	ret
+	
+ADC_to_PB_Done:
+	; No puhsbutton pressed	
+	ret
 
 ; MAIN 
 main:
@@ -106,4 +278,133 @@ main:
     Set_Cursor(1, 1)
     Send_Constant_String(#temperature_message)
 
+	mov FSM1_state, #0
+    mov Temp_soak, #150
+	mov Time_soak, #60
+	mov Temp_refl, #220
+	mov Time_refl, #45
+
+Forever:
+	lcall ADC_to_PB
+	;lcall Display_PushButtons_ADC
+
+	; Wait 50 ms between readings
+	mov R2, #50
+	lcall waitms
+	
+; STATE MACHINE	
+FSM1:
+	mov a, FSM1_state
+
+; off state. Should go to state 1 when start button is pressed (Button 8 right now)
+FSM1_state0:
+	cjne a, #0, FSM1_state1
+	Set_Cursor(2, 5)
+	Send_Constant_String(#state0)
+	mov pwm, #0
+	jb PB0, FSM1_state0_done
+	mov FSM1_state, #1
+FSM1_state0_done:
+	ljmp Forever
+
+; pre-heat state. Should go to state two when temp reaches temp_soak	
+FSM1_state1:
+	cjne a, #1, FSM1_state2
+	Set_Cursor(2, 5)
+	Send_Constant_String(#state1)
+	
+	clr P1.6
+	
+	mov pwm, #100
+	mov sec, #0
+	
+	; These two lines are temporary. temp should be read from the thermocouple wire
+	mov temp_soak, #10
+	mov temp, #15
+	
+	mov a, temp_soak
+	setb c
+	subb a, temp
+	jnc FSM1_state1_done
+	mov FSM1_state, #2
+FSM1_state1_done:
+	ljmp Forever
+
+; State 2
+FSM1_state2:
+	setb P1.6 ;speaker
+	cjne a, #2, FSM1_state3
+	Set_Cursor(2, 5)
+	Send_Constant_String(#state2)
+	mov pwm, #20
+	
+	mov sec, #70
+	
+	mov a, Time_soak
+	clr c
+	subb a, sec
+	jnc FSM1_state2_done
+	mov FSM1_state, #3
+FSM1_state2_done:
+	ljmp Forever
+
+;DELETE
+jump:
+ljmp FSM1_state0	
+
+;State 3
+FSM1_state3:
+	cjne a, #3, FSM1_state4
+	Set_Cursor(2, 5)
+	Send_Constant_String(#state3)
+	mov pwm, #100
+	mov sec, #0
+	
+	mov temp, #250
+	
+	mov a, Temp_refl
+	clr c
+	subb a, temp
+	jnc FSM1_state3_done
+	mov FSM1_state, #4
+FSM1_state3_done:
+	ljmp Forever
+
+
+;State 4
+FSM1_state4:
+	cjne a, #4, FSM1_state5
+	Set_Cursor(2, 5)
+	Send_Constant_String(#state4)
+	mov pwm, #20
+	
+	mov sec, #70
+	
+	mov a, Time_refl
+	clr c
+	subb a,sec
+	jnc FSM1_state4_done
+	mov FSM1_state, #5
+FSM1_state4_done:
+	ljmp Forever
+	
+FSM1_state5:
+	cjne a, #5, jump
+	Set_Cursor(2, 5)
+	Send_Constant_String(#state5)
+	mov pwm, #0
+	
+	mov temp, #70
+	
+	mov a, #60
+	clr c
+	subb a, temp
+	jnc FSM1_state5_done
+	mov FSM1_state,#0
+FSM1_state5_done:
+	ljmp Forever
+	
+
+
+;Any additions to be checked
 END

@@ -144,7 +144,7 @@ ADC_to_PB:
 	setb PB1
 	setb PB0
 	
-	; Check PB7
+	; MODE
 ADC_to_PB_L7:
 	clr c
 	mov a, ADCRH
@@ -153,7 +153,7 @@ ADC_to_PB_L7:
 	clr PB7
 	ret
 
-	; Check PB6
+	; UP
 ADC_to_PB_L6:
 	clr c
 	mov a, ADCRH
@@ -162,7 +162,7 @@ ADC_to_PB_L6:
 	clr PB6
 	ret
 
-	; Check PB5
+	; DOWN
 ADC_to_PB_L5:
 	clr c
 	mov a, ADCRH
@@ -171,7 +171,7 @@ ADC_to_PB_L5:
 	clr PB5
 	ret
 
-	; Check PB4
+	; START
 ADC_to_PB_L4:
 	clr c
 	mov a, ADCRH
@@ -180,7 +180,7 @@ ADC_to_PB_L4:
 	clr PB4
 	ret
 
-	; Check PB3
+	; STOP
 ADC_to_PB_L3:
 	clr c
 	mov a, ADCRH

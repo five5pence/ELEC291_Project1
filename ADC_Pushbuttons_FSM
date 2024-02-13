@@ -312,16 +312,16 @@ main:
     ;Send_Constant_String(#comma)
     
 	;Set_Cursor(2, 2)     
-	;Display_BCD(#soaktemp)
+	;Display_BCD(soaktemp)
 	
 	;Set_Cursor(2, 6)	 
-	;Display_BCD(#soaktime)   
+	;Display_BCD(soaktime)   
 	
 	;Set_Cursor(2, 10)     
-	;Display_BCD(#reflowtemp)
+	;Display_BCD(reflowtemp)
 	
 	;Set_Cursor(2, 14)     
-	;Display_BCD(#reflowtemp)
+	;Display_BCD(reflowtemp)
 	
 Forever:
 	lcall ADC_to_PB

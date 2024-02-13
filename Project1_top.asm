@@ -134,7 +134,18 @@ Display_formated_BCD_To:
 	Display_BCD(bcd+2)
 	Display_char(#'.')
 	Display_BCD(bcd+1)
+
+	Set_Cursor(1, 3)
+	Left_blank(bcd+3, skip_blank2)
+	mov a, bcd+0
+	anl a, #0f0h
+	swap a
+	jnz skip_blank2
+	Display_char(#' ')
+	
+	skip_blank2:
 	ret
+	
 
 Display_formated_BCD_Tj:
 	Display_BCD(bcd+2)
@@ -406,7 +417,7 @@ Forever:
 	lcall Display_formated_BCD_To
 	
 	; Wait 50 ms between readings
-	mov R2, #50
+	mov R2, #100
 	lcall waitms
 	
 ; STATE MACHINE	

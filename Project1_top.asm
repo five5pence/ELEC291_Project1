@@ -78,6 +78,10 @@ LCD_D5 equ P0.1
 LCD_D6 equ P0.2
 LCD_D7 equ P0.3
 
+; Flash instructions
+PAGE_ERASE_AP   EQU 00100010b
+BYTE_PROGRAM_AP EQU 00100001b
+
 $NOLIST
 $include(LCD_4BIT.inc)
 $LIST
@@ -220,8 +224,6 @@ Init_All:
 ; Data Flash when user code is executed in APROM.
 ; (The base of this code is listed in the N76E003 user manual)
 ;******************************************************************************
-PAGE_ERASE_AP   EQU 00100010b
-BYTE_PROGRAM_AP EQU 00100001b
 
 Save_Variables:
 	CLR EA  ; MUST disable interrupts for this to work!

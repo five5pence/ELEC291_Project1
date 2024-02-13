@@ -127,7 +127,7 @@ Left_blank_%M_b:
 	Display_char(#' ')
 endmac
 
-; Formatting for LCD display
+; Formatting to display thermocouple temperature
 ; Display: 0000.00
 Display_formated_BCD_To:
 	Display_BCD(bcd+3)
@@ -146,7 +146,8 @@ Display_formated_BCD_To:
 	skip_blank2:
 	ret
 	
-
+; Formatting to display ambient temperature
+; Display: 00.00
 Display_formated_BCD_Tj:
 	Display_BCD(bcd+2)
 	Display_char(#'.')
@@ -197,7 +198,7 @@ Init_All:
 	; AINDIDS select if some pins are analog inputs or digital I/O:
 	mov AINDIDS, #0x00 ; Disable all analog inputs
 	orl AINDIDS, #0b10000000 ; P1.1 is analog input
-	orl AINDIDS, #0b00000001 ; P1.1 is analog input
+	orl AINDIDS, #0b00000001 ; P3.0 is analog input
 	orl ADCCON1, #0x01 ; Enable ADC
 	
 	ret
@@ -382,6 +383,7 @@ Forever:
 	Set_Cursor(1, 12)
 	lcall Display_formated_BCD_Tj
 
+	; Convert value back to hex to use for calculations
 	lcall bcd2hex
 
 	; Storing the ambient temperature
@@ -415,8 +417,16 @@ Forever:
 	lcall hex2bcd
 	Set_Cursor(1, 3)
 	lcall Display_formated_BCD_To
+
+	; Storing the thermocouple temperature into var temp
+	lcall bcd2hex
+
+	mov temp+0, x+0
+	mov temp+1, x+1
+	mov temp+2, x+2
+	mov temp+3, x+3
 	
-	; Wait 50 ms between readings
+	; Wait 100 ms between readings
 	mov R2, #100
 	lcall waitms
 	

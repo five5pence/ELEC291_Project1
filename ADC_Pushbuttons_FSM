@@ -354,7 +354,7 @@ FSM1_state4:
 	clr c
 	subb a,sec
 	jnc FSM1_state4_done
-	mov FSM_state, #5
+	mov FSM1_state, #5
 FSM1_state4_done:
 	ljmp Forever
 	

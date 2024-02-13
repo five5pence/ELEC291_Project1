@@ -82,10 +82,6 @@ LCD_D7 equ P0.3
 PAGE_ERASE_AP   EQU 00100010b
 BYTE_PROGRAM_AP EQU 00100001b
 
-$NOLIST
-$include(LCD_4BIT.inc)
-$LIST
-
 ; These register definitions needed by 'math32.inc'
 DSEG at 30H
 x:   ds 4
@@ -119,11 +115,6 @@ PB4: dbit 1
 PB5: dbit 1
 PB6: dbit 1
 PB7: dbit 1
-
-; MATH32
-$NOLIST
-$include(math32.inc)
-$LIST
 
 ; Blank Macro
 Left_blank mac

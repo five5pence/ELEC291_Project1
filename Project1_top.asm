@@ -456,10 +456,12 @@ main:
     Send_Constant_String(#temperature_message)
 
 	mov FSM1_state, #0
-    mov Temp_soak, #150
-	mov Time_soak, #60
-	mov Temp_refl, #220
-	mov Time_refl, #45
+
+	lcall Load_Variables ; Load variables from flash memory
+;    mov Temp_soak, #150
+;	mov Time_soak, #60
+;	mov Temp_refl, #220
+;	mov Time_refl, #45
 	mov sec, #0
 
 Forever:
@@ -684,6 +686,7 @@ FSM1_state5:
 	jnc FSM1_state5_done
 	mov FSM1_state,#0
 FSM1_state5_done:
+	lcall Save_Variables ; Save variables in flash memory
 	ljmp Forever
 	
 

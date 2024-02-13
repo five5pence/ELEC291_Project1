@@ -38,7 +38,7 @@ ORG 0x0000
     ljmp main
 
 ; Initialization Messages
-temperature_message:     db 'To=   C  Tj=   C', 0
+temperature_message:     db 'O=       J=     ', 0
 
 state0:	   db 'State 0', 0
 state1:	   db 'State 1', 0
@@ -110,15 +110,38 @@ $NOLIST
 $include(math32.inc)
 $LIST
 
+; Blank Macro
+Left_blank mac
+	mov a, %0
+	anl a, #0xf0
+	swap a
+	jz Left_blank_%M_a
+	ljmp %1
+Left_blank_%M_a:
+	Display_char(#' ')
+	mov a, %0
+	anl a, #0x0f
+	jz Left_blank_%M_b
+	ljmp %1
+Left_blank_%M_b:
+	Display_char(#' ')
+endmac
+
 ; Formatting for LCD display
-; Display: 0000.0000
-Display_formated_BCD:
+; Display: 0000.00
+Display_formated_BCD_To:
 	Display_BCD(bcd+3)
 	Display_BCD(bcd+2)
 	Display_char(#'.')
 	Display_BCD(bcd+1)
-	Display_BCD(bcd+0)
 	ret
+
+Display_formated_BCD_Tj:
+	Display_BCD(bcd+2)
+	Display_char(#'.')
+	Display_BCD(bcd+1)
+	ret
+
 
 ; INITIALIZATION SUBROUTINES
 Init_All:
@@ -283,8 +306,8 @@ main:
     lcall Init_All
     lcall LCD_4BIT
     ; initial messages in LCD
-    ;Set_Cursor(1, 1)
-    ;Send_Constant_String(#temperature_message)
+    Set_Cursor(1, 1)
+    Send_Constant_String(#temperature_message)
 
 	mov FSM1_state, #0
     mov Temp_soak, #150
@@ -344,8 +367,8 @@ Forever:
 	
 	; Convert to BCD and display
 	lcall hex2bcd
-	;Set_Cursor(1, 10)
-	;lcall Display_formated_BCD
+	Set_Cursor(1, 12)
+	lcall Display_formated_BCD_Tj
 
 	lcall bcd2hex
 
@@ -378,8 +401,8 @@ Forever:
 	
 	; Convert to BCD and display
 	lcall hex2bcd
-	Set_Cursor(1, 10)
-	lcall Display_formated_BCD
+	Set_Cursor(1, 3)
+	lcall Display_formated_BCD_To
 	
 	; Wait 50 ms between readings
 	mov R2, #50

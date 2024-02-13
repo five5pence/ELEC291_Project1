@@ -1,6 +1,16 @@
 $NOLIST
 $MODN76E003
 $LIST
+
+$NOLIST
+$include(math32.inc)
+$LIST
+
+$NOLIST
+$include(LCD_4bit.inc)
+$LIST
+
+
 ;  N76E003 pinout:
 ;                               -------
 ;       PWM2/IC6/T0/AIN4/P0.5 -|1    20|- P0.4/AIN5/STADC/PWM3/IC3
@@ -59,6 +69,7 @@ thermocouple_in equ P1.1
 oven_out equ P1.2
 speaker_out equ P1.6
 
+CSEG
 ; LCD
 LCD_RS equ P1.3
 LCD_E equ P1.4
@@ -66,6 +77,10 @@ LCD_D4 equ P0.0
 LCD_D5 equ P0.1
 LCD_D6 equ P0.2
 LCD_D7 equ P0.3
+
+; Flash instructions
+PAGE_ERASE_AP   EQU 00100010b
+BYTE_PROGRAM_AP EQU 00100001b
 
 $NOLIST
 $include(LCD_4BIT.inc)
@@ -195,6 +210,125 @@ Init_All:
 	
 	ret
 
+; Flash Memory Subroutines
+;******************************************************************************
+; This code illustrates how to use IAP to make APROM 3f80h as a byte of
+; Data Flash when user code is executed in APROM.
+; (The base of this code is listed in the N76E003 user manual)
+;******************************************************************************
+
+Save_Variables:
+	CLR EA  ; MUST disable interrupts for this to work!
+	
+	MOV TA, #0aah ; CHPCON is TA protected
+	MOV TA, #55h
+	ORL CHPCON, #00000001b ; IAPEN = 1, enable IAP mode
+	
+	MOV TA, #0aah ; IAPUEN is TA protected
+	MOV TA, #55h
+	ORL IAPUEN, #00000001b ; APUEN = 1, enable APROM update
+	
+	MOV IAPCN, #PAGE_ERASE_AP ; Erase page 3f80h~3f7Fh
+	MOV IAPAH, #3fh ; Address high byte
+	MOV IAPAL, #80h ; Address low byte
+	MOV IAPFD, #0FFh ; Data to load into the address byte
+	MOV TA, #0aah ; IAPTRG is TA protected
+	MOV TA, #55h
+	ORL IAPTRG, #00000001b ; write �1� to IAPGO to trigger IAP process
+	
+	MOV IAPCN, #BYTE_PROGRAM_AP
+	MOV IAPAH, #3fh
+	
+	;Load 3f80h with temp_soak
+	MOV IAPAL, #80h
+	MOV IAPFD, temp_soak
+	MOV TA, #0aah
+	MOV TA, #55h
+	ORL IAPTRG,#00000001b ; Basically, this executes the write to flash memory
+	
+	;Load 3f81h with Time_soak
+	MOV IAPAL, #81h
+	MOV IAPFD, Time_soak
+	MOV TA, #0aah
+	MOV TA, #55h
+	ORL IAPTRG,#00000001b
+	
+	;Load 3f82h with Temp_refl
+	MOV IAPAL, #82h
+	MOV IAPFD, Temp_refl
+	MOV TA, #0aah
+	MOV TA, #55h
+	ORL IAPTRG,#00000001b
+	
+	;Load 3f83h with Time_refl
+	MOV IAPAL, #83h
+	MOV IAPFD, Time_refl
+	MOV TA, #0aah
+	MOV TA, #55h
+	ORL IAPTRG,#00000001b
+
+	;Load 3f84h with 55h
+	MOV IAPAL,#84h
+	MOV IAPFD, #55h
+	MOV TA, #0aah
+	MOV TA, #55h
+	ORL IAPTRG, #00000001b
+
+	;Load 3f85h with aah (spacer value indicating EOF, will load if something funny happens)
+	MOV IAPAL, #85h
+	MOV IAPFD, #0aah
+	MOV TA, #0aah
+	MOV TA, #55h
+	ORL IAPTRG, #00000001b
+
+	MOV TA, #0aah
+	MOV TA, #55h
+	ANL IAPUEN, #11111110b ; APUEN = 0, disable APROM update
+	MOV TA, #0aah
+	MOV TA, #55h
+	ANL CHPCON, #11111110b ; IAPEN = 0, disable IAP mode
+	
+	setb EA  ; Re-enable interrupts
+
+	ret
+
+Load_Variables:
+	mov dptr, #0x3f84  ; First key value location.  Must be 0x55
+	clr a
+	movc a, @a+dptr
+	cjne a, #0x55, Load_Defaults
+	inc dptr      ; Second key value location.  Must be 0xaa
+	clr a
+	movc a, @a+dptr
+	cjne a, #0xaa, Load_Defaults
+	
+	mov dptr, #0x3f80
+	clr a
+	movc a, @a+dptr
+	mov temp_soak, a
+	
+	inc dptr
+	clr a
+	movc a, @a+dptr
+	mov Time_soak, a
+	
+	inc dptr
+	clr a
+	movc a, @a+dptr
+	mov Temp_refl, a
+	
+	inc dptr
+	clr a
+	movc a, @a+dptr
+	mov Time_refl, a
+	ret
+
+Load_Defaults:
+	mov temp_soak, #1
+	mov Time_soak, #2
+	mov Temp_refl, #3
+	mov Time_refl, #4
+	ret
 
 wait_1ms:
 	clr	TR0 ; Stop timer 0
@@ -539,6 +673,7 @@ FSM1_state5:
 	jnc FSM1_state5_done
 	mov FSM1_state,#0
 FSM1_state5_done:
+	lcall Save_Variables ; Save variables in flash memory
 	ljmp Forever
 	
 

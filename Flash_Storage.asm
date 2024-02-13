@@ -108,12 +108,12 @@ Save_Variables:
 	ORL IAPUEN, #00000001b ; APUEN = 1, enable APROM update
 	
 	MOV IAPCN, #PAGE_ERASE_AP ; Erase page 3f80h~3f7Fh
-	MOV IAPAH, #3fh
-	MOV IAPAL, #80h
-	MOV IAPFD, #0FFh
+	MOV IAPAH, #3fh ; Address high byte
+	MOV IAPAL, #80h ; Address low byte
+	MOV IAPFD, #0FFh ; Data to load into the address byte
 	MOV TA, #0aah ; IAPTRG is TA protected
 	MOV TA, #55h
-	ORL IAPTRG, #00000001b ; write ‘1’ to IAPGO to trigger IAP process
+	ORL IAPTRG, #00000001b ; write ï¿½1ï¿½ to IAPGO to trigger IAP process
 	
 	MOV IAPCN, #BYTE_PROGRAM_AP
 	MOV IAPAH, #3fh
@@ -123,7 +123,7 @@ Save_Variables:
 	MOV IAPFD, variable_1
 	MOV TA, #0aah
 	MOV TA, #55h
-	ORL IAPTRG,#00000001b
+	ORL IAPTRG,#00000001b ; Basically, this executes the write to flash memory
 	
 	;Load 3f81h with variable_2
 	MOV IAPAL, #81h
@@ -153,7 +153,7 @@ Save_Variables:
 	MOV TA, #55h
 	ORL IAPTRG, #00000001b
 
-	;Load 3f85h with aah
+	;Load 3f85h with aah (spacer value indicating EOF, will load if something funny happens)
 	MOV IAPAL, #85h
 	MOV IAPFD, #0aah
 	MOV TA, #0aah

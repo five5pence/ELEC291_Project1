@@ -50,6 +50,9 @@ state3:	   db 'State 3', 0
 state4:	   db 'State 4', 0
 state5:	   db 'State 5', 0
 
+start:     db 'on', 0
+stop: 	   db 'of', 0
+
 cseg
 
 ; SYMBOLIC CONSTANTS
@@ -112,6 +115,8 @@ PB4: dbit 1
 PB5: dbit 1
 PB6: dbit 1
 PB7: dbit 1
+
+start_stop_flag: dbit 1 ;
 
 ; MATH32
 $NOLIST

@@ -75,6 +75,7 @@ $LIST
 DSEG at 30H
 x:   ds 4
 y:   ds 4
+amb_temp: ds 4 ; ambient temperature read by LM335
 bcd: ds 5
 
 DSEG
@@ -112,14 +113,11 @@ $LIST
 ; Formatting for LCD display
 ; Display: 0000.0000
 Display_formated_BCD:
-	Set_Cursor(2, 5)
 	Display_BCD(bcd+3)
 	Display_BCD(bcd+2)
 	Display_char(#'.')
 	Display_BCD(bcd+1)
 	Display_BCD(bcd+0)
-	Set_Cursor(2, 5)
-	Display_char(#' ')
 	ret
 
 ; INITIALIZATION SUBROUTINES
@@ -147,18 +145,28 @@ Init_All:
 	anl	TMOD,#0xF0 ; Clear the configuration bits for timer 0
 	orl	TMOD,#0x01 ; Timer 0 in Mode 1: 16-bit timer
 	
+	; Initialize the pin used by the ADC (P1.1) as input.
+	orl	P1M1, #0b00000010
+	anl	P1M2, #0b11111101
+
+	; Initialize the pin used by the ADC (P3.0) as input.
+	orl	P3M1, #0b00000001
+	anl	P3M2, #0b11111110
+	
 	; Initialize and start the ADC:
-	
-	; AIN0 is connected to P1.7.  Configure P1.7 as input.
-	orl	P1M1, #0b10000000
-	anl	P1M2, #0b01111111
-	
+	anl ADCCON0, #0xF0
+	orl ADCCON0, #0x07 ; Select channel 7
+
+	anl ADCCON2, #0xF0
+	orl ADCCON2, #0x01 ; Select channel 1
+
 	; AINDIDS select if some pins are analog inputs or digital I/O:
 	mov AINDIDS, #0x00 ; Disable all analog inputs
-	orl AINDIDS, #0b00000001 ; Using AIN0
+	orl AINDIDS, #0b10000000 ; P1.1 is analog input
+	orl AINDIDS, #0b00000001 ; P1.1 is analog input
 	orl ADCCON1, #0x01 ; Enable ADC
-
-    ret
+	
+	ret
 
 
 wait_1ms:
@@ -275,8 +283,8 @@ main:
     lcall Init_All
     lcall LCD_4BIT
     ; initial messages in LCD
-    Set_Cursor(1, 1)
-    Send_Constant_String(#temperature_message)
+    ;Set_Cursor(1, 1)
+    ;Send_Constant_String(#temperature_message)
 
 	mov FSM1_state, #0
     mov Temp_soak, #150
@@ -287,7 +295,92 @@ main:
 Forever:
 	lcall ADC_to_PB
 	;lcall Display_PushButtons_ADC
+	
+	mov ADCCON0, #0x07 ; Select channel 7 (P1.1)
+	clr ADCF
+	setb ADCS ;  ADC start trigger signal
+    jnb ADCF, $ ; Wait for conversion complete
+    
+    ; Read the ADC result and store in [R1, R0]
+    mov a, ADCRH   
+    swap a
+    push acc
+    anl a, #0x0f
+    mov R1, a
+    pop acc
+    anl a, #0xf0
+    orl a, ADCRL
+    mov R0, A
+    
+    mov ADCCON0, #0x01 ; Select channel 1 (P3.0)
+	clr ADCF
+	setb ADCS ;  ADC start trigger signal
+    jnb ADCF, $ ; Wait for conversion complete
+    
+    ; Read the ADC result and store in [R4, R3]
+    mov a, ADCRH   
+    swap a
+    push acc
+    anl a, #0x0f
+    mov R4, a
+    pop acc
+    anl a, #0xf0
+    orl a, ADCRL
+    mov R3, A
+    
+	; Convert to LM335 temperature to voltage
+	mov x+0, R3
+	mov x+1, R4
+	mov x+2, #0
+	mov x+3, #0
+	Load_y(50300) ; VCC voltage measured
+	lcall mul32
+	Load_y(4095) ; 2^12-1
+	lcall div32
+	Load_y(27600)
+	lcall sub32
+	Load_y(100)
+	lcall mul32
+	
+	; Convert to BCD and display
+	lcall hex2bcd
+	;Set_Cursor(1, 10)
+	;lcall Display_formated_BCD
 
+	lcall bcd2hex
+
+	; Storing the ambient temperature
+	mov amb_temp+0, x+0
+	mov amb_temp+1, x+1
+	mov amb_temp+2, x+2
+	mov amb_temp+3, x+3
+
+	; Convert to thermocouple voltage to temperature
+	mov x+0, R0
+	mov x+1, R1
+	mov x+2, #0
+	mov x+3, #0
+	Load_y(50300) ; VCC voltage measured
+	lcall mul32
+	Load_y(4095) ; 2^12-1
+	lcall div32
+	Load_y(100)
+	lcall div32
+	Load_y(5189)
+	lcall mul32
+
+	; Adding the ambient temperature to oven temperature
+	mov y+0, amb_temp+0
+	mov y+1, amb_temp+1
+	mov y+2, amb_temp+2
+	mov y+3, amb_temp+3
+	lcall add32
+	
+	; Convert to BCD and display
+	lcall hex2bcd
+	Set_Cursor(1, 10)
+	lcall Display_formated_BCD
+	
 	; Wait 50 ms between readings
 	mov R2, #50
 	lcall waitms

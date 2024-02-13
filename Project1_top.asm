@@ -78,6 +78,127 @@ temperature_message:     db 'To=   C  Tj=   C', 0
 
 
 ; SUBROUTINES
+;******************************************************************************
+; This is the code from the example file, modified for use in
+; the oven controller. 
+; (The base of this code is listed in the N76E003 user manual)
+;******************************************************************************
+PAGE_ERASE_AP   EQU 00100010b
+BYTE_PROGRAM_AP EQU 00100001b
+
+Save_Variables:
+	CLR EA  ; MUST disable interrupts for this to work!
+	
+	MOV TA, #0aah ; CHPCON is TA protected
+	MOV TA, #55h
+	ORL CHPCON, #00000001b ; IAPEN = 1, enable IAP mode
+	
+	MOV TA, #0aah ; IAPUEN is TA protected
+	MOV TA, #55h
+	ORL IAPUEN, #00000001b ; APUEN = 1, enable APROM update
+	
+	MOV IAPCN, #PAGE_ERASE_AP ; Erase page 3f80h~3f7Fh
+	MOV IAPAH, #3fh ; Address high byte
+	MOV IAPAL, #80h ; Address low byte
+	MOV IAPFD, #0FFh ; Data to load into the address byte
+	MOV TA, #0aah ; IAPTRG is TA protected
+	MOV TA, #55h
+	ORL IAPTRG, #00000001b ; write �1� to IAPGO to trigger IAP process
+	
+	MOV IAPCN, #BYTE_PROGRAM_AP
+	MOV IAPAH, #3fh
+	
+	;Load 3f80h with soak_time
+	MOV IAPAL, #80h
+	MOV IAPFD, soak_time
+	MOV TA, #0aah
+	MOV TA, #55h
+	ORL IAPTRG,#00000001b ; Basically, this executes the write to flash memory
+	
+	;Load 3f81h with soak_temp
+	MOV IAPAL, #81h
+	MOV IAPFD, soak_temp
+	MOV TA, #0aah
+	MOV TA, #55h
+	ORL IAPTRG,#00000001b
+	
+	;Load 3f82h with reflow_time
+	MOV IAPAL, #82h
+	MOV IAPFD, reflow_time
+	MOV TA, #0aah
+	MOV TA, #55h
+	ORL IAPTRG,#00000001b
+	
+	;Load 3f83h with reflow_temp
+	MOV IAPAL, #83h
+	MOV IAPFD, reflow_temp
+	MOV TA, #0aah
+	MOV TA, #55h
+	ORL IAPTRG,#00000001b
+
+	;Load 3f84h with 55h
+	MOV IAPAL,#84h
+	MOV IAPFD, #55h
+	MOV TA, #0aah
+	MOV TA, #55h
+	ORL IAPTRG, #00000001b
+
+	;Load 3f85h with aah (spacer value indicating EOF, will load if something funny happens)
+	MOV IAPAL, #85h
+	MOV IAPFD, #0aah
+	MOV TA, #0aah
+	MOV TA, #55h
+	ORL IAPTRG, #00000001b
+
+	MOV TA, #0aah
+	MOV TA, #55h
+	ANL IAPUEN, #11111110b ; APUEN = 0, disable APROM update
+	MOV TA, #0aah
+	MOV TA, #55h
+	ANL CHPCON, #11111110b ; IAPEN = 0, disable IAP mode
+	
+	setb EA  ; Re-enable interrupts
+
+	ret
+
+Load_Variables:
+	mov dptr, #0x3f84  ; First key value location.  Must be 0x55
+	clr a
+	movc a, @a+dptr
+	cjne a, #0x55, Load_Defaults ; Load default values if an error occurs 
+	inc dptr      ; Second key value location.  Must be 0xaa
+	clr a
+	movc a, @a+dptr ; 
+	cjne a, #0xaa, Load_Defaults ; Load defaults if another error occurs
+	
+	mov dptr, #0x3f80 ; Start accessing values in flash memory
+	clr a
+	movc a, @a+dptr
+	mov soak_time, a
+	
+	inc dptr
+	clr a
+	movc a, @a+dptr
+	mov soak_temp, a
+	
+	inc dptr
+	clr a
+	movc a, @a+dptr
+	mov reflow_time, a
+	
+	inc dptr
+	clr a
+	movc a, @a+dptr
+	mov reflow_temp, a
+	ret
+
+Load_Defaults:
+	mov soak_time, #60 ; Whatever we need our default reflow profile values to be
+	mov soak_temp, #140
+	mov reflow_time, #30
+	mov reflow_temp, #230
+	ret
+
 Average_ADC
     Load_x(0)
     mov r5, #255

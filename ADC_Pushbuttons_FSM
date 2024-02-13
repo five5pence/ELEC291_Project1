@@ -257,7 +257,33 @@ Display_PushButtons_ADC:
 	ret
 	
 main:
-	mov sp, #0x7f
+	mov sp, #0x7F       ; Initialize stack pointer
+
+
+	mov soaktime, #70 ; Initialize Soak_Timer with 70
+	mov a , soaktime
+	add a, #0x2a
+	mov soaktime, a
+	
+	mov soaktemp, #150 ; Initialize Soak_temp with 150 (not working)
+	mov a , soaktemp
+	add a, #0x2a
+	mov soaktemp, a
+	
+	mov reflowtime, #40 ; Initialize reflow_timer with 40 (not working)
+	mov a , reflowtime
+	add a, #0x2a
+	mov reflowtime, a
+	
+	mov reflowtemp, #220 ; Initialize reflow_temp with 220 (not working)
+	mov a , reflowtemp
+	add a, #0x2a
+	mov reflowtemp, a
+
+
+
+
+
 	lcall Init_All
     lcall LCD_4BIT
     mov FSM1_state, #0
@@ -286,16 +312,16 @@ main:
     ;Send_Constant_String(#comma)
     
 	;Set_Cursor(2, 2)     
-	;Display_BCD(#soaktemp)
+	;Display_BCD(soaktemp)
 	
 	;Set_Cursor(2, 6)	 
-	;Display_BCD(#soaktime)   
+	;Display_BCD(soaktime)   
 	
 	;Set_Cursor(2, 10)     
-	;Display_BCD(#reflowtemp)
+	;Display_BCD(reflowtemp)
 	
 	;Set_Cursor(2, 14)     
-	;Display_BCD(#reflowtemp)
+	;Display_BCD(reflowtemp)
 	
 Forever:
 	lcall ADC_to_PB

@@ -16,3 +16,34 @@
 ;                 (FREE) P1.5 -|10   11|- P1.4 LCD E
 ;                               -------
 ;
+
+Thermocouple.asm:
+R2 - waitms
+sp - main
+R1 - forever
+R0 - forever
+R2 - forever
+r0 - forever, Send_BCD
+
+Flash_Storage.asm
+sp - MyProgram
+
+Project1_top.asm
+R2 - waitms
+sp - main
+r2 - forever
+
+BUTTON ORDER (left to right)
+PB7 - MODE
+PB6 - UP
+PB5 - DOWN
+PB4 - START/STOP
+PB3 - 
+PB2 - 
+PB1 -
+PB0 - 
+
+TIMERS
+Timer0 - Checking reflow/soak times for FSM
+Timer1 - Sending the pulse for the speaker
+TImer2 - Power

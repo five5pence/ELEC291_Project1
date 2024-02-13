@@ -1,0 +1,333 @@
+                  2   $LIST
+0000              4   
+0000              5   ;  N76E003 pinout:
+0000              6   ;                               -------
+0000              7   ;       PWM2/IC6/T0/AIN4/P0.5 -|1    20|- P0.4/AIN5/STADC/PWM3/IC3
+0000              8   ;               TXD/AIN3/P0.6 -|2    19|- P0.3/PWM5/IC5/AIN6
+0000              9   ;               RXD/AIN2/P0.7 -|3    18|- P0.2/ICPCK/OCDCK/RXD_1/[SCL]
+0000             10   ;                    RST/P2.0 -|4    17|- P0.1/PWM4/IC4/MISO
+0000             11   ;        INT0/OSCIN/AIN1/P3.0 -|5    16|- P0.0/PWM3/IC3/MOSI/T1
+0000             12   ;              INT1/AIN0/P1.7 -|6    15|- P1.0/PWM2/IC2/SPCLK
+0000             13   ;                         GND -|7    14|- P1.1/PWM1/IC1/AIN7/CLO
+0000             14   ;[SDA]/TXD_1/ICPDA/OCDDA/P1.6 -|8    13|- P1.2/PWM0/IC0
+0000             15   ;                         VDD -|9    12|- P1.3/SCL/[STADC]
+0000             16   ;            PWM5/IC7/SS/P1.5 -|10   11|- P1.4/SDA/FB/PWM1
+0000             17   ;                               -------
+0000             18   ;
+0000             19   
+0000             20   CLK           EQU 16600000 ; Microcontroller system oscillator frequency in Hz
+0000             21   BAUD          EQU 115200 ; Baud rate of UART in bps
+0000             22   TIMER1_RELOAD EQU (0x100-(CLK/(16*BAUD)))
+0000             23   
+0000             24   org 0000H
+0000 020284      25      ljmp MyProgram
+0003             26   
+0030             27   DSEG at 0x30
+0030             28   variable_1: ds 1
+0031             29   variable_2: ds 1
+0032             30   variable_3: ds 1
+0033             31   variable_4: ds 1
+0034             32   
+0003             33   CSEG
+0003             34   
+0003             35   Init_All:
+0003             36            ; Configure all the pins for biderectional I/O
+0003 75AC00      37            mov     P3M1, #0x00
+0006 75AD00      38            mov     P3M2, #0x00
+0009 75B300      39            mov     P1M1, #0x00
+000C 75B400      40            mov     P1M2, #0x00
+000F 75B100      41            mov     P0M1, #0x00
+0012 75B200      42            mov     P0M2, #0x00
+0015             43            
+0015 438E10      44            orl     CKCON, #0x10 ; CLK is the input for timer 1
+0018 438780      45            orl     PCON, #0x80 ; Bit SMOD=1, double baud rate
+001B 759852      46            mov     SCON, #0x52
+001E 53C4DF      47            anl     T3CON, #0b11011111
+0021 53890F      48            anl     TMOD, #0x0F ; Clear the configuration bits for timer 1
+0024 438920      49            orl     TMOD, #0x20 ; Timer 1 Mode 2
+0027 758DF7      50            mov     TH1, #TIMER1_RELOAD ; TH1=TIMER1_RELOAD;
+002A D28E        51            setb TR1
+002C             52            
+002C 22          53            ret
+002D             54   
+002D             55   putchar:
+002D 3099FD      56       JNB TI, putchar
+0030 C299        57       CLR TI
+0032 F599        58       MOV SBUF, a
+0034 22          59       RET
+0035             60   
+0035             61   SendString:
+0035 E4          62       CLR A
+0036 93          63       MOVC A, @A+DPTR
+0037 6006        64       JZ SSDone
+0039 12002D      65       LCALL putchar
+003C A3          66       INC DPTR
+003D 80F6        67       SJMP SendString
+003F             68   SSDone:
+003F 22          69       ret
+0040             70   
+0040             71   ; Sends the byte in the accumulator to the serial port in decimal 
+0040             72   Send_byte:
+0040 75F064      73            mov b, #100
+0043 84          74            div ab
+0044 4430        75            orl a, #'0'
+0046 12002D      76            lcall putchar
+0049 E5F0        77            mov a, b
+004B 75F00A      78            mov b, #10
+004E 84          79            div ab
+004F 4430        80            orl a, #'0'
+0051 12002D      81            lcall putchar
+0054 E5F0        82            mov a, b
+0056 4430        83            orl a, #'0'
+0058 12002D      84            lcall putchar
+005B 740D        85            mov a, #'\r'
+005D 12002D      86            lcall putchar
+0060 740A        87            mov a, #'\n'
+0062 12002D      88            lcall putchar
+0065 22          89            ret
+0066             90   
+0066             91   ;******************************************************************************
+0066             92   ; This code illustrates how to use IAP to make APROM 3f80h as a byte of
+0066             93   ; Data Flash when user code is executed in APROM.
+0066             94   ; (The base of this code is listed in the N76E003 user manual)
+0066             95   ;******************************************************************************
+0066             96   PAGE_ERASE_AP   EQU 00100010b
+0066             97   BYTE_PROGRAM_AP EQU 00100001b
+0066             98   
+0066             99   Save_Variables:
+0066 C2AF       100            CLR EA  ; MUST disable interrupts for this to work!
+0068            101            
+0068 75C7AA     102            MOV TA, #0aah ; CHPCON is TA protected
+006B 75C755     103            MOV TA, #55h
+006E 439F01     104            ORL CHPCON, #00000001b ; IAPEN = 1, enable IAP mode
+0071            105            
+0071 75C7AA     106            MOV TA, #0aah ; IAPUEN is TA protected
+0074 75C755     107            MOV TA, #55h
+0077 43A501     108            ORL IAPUEN, #00000001b ; APUEN = 1, enable APROM update
+007A            109            
+007A 75AF22     110            MOV IAPCN, #PAGE_ERASE_AP ; Erase page 3f80h~3f7Fh
+007D 75A73F     111            MOV IAPAH, #3fh
+0080 75A680     112            MOV IAPAL, #80h
+0083 75AEFF     113            MOV IAPFD, #0FFh
+0086 75C7AA     114            MOV TA, #0aah ; IAPTRG is TA protected
+0089 75C755     115            MOV TA, #55h
+008C 43A401     116            ORL IAPTRG, #00000001b ; write ‘1’ to IAPGO to trigger IAP process
+008F            117            
+008F 75AF21     118            MOV IAPCN, #BYTE_PROGRAM_AP
+0092 75A73F     119            MOV IAPAH, #3fh
+0095            120            
+0095            121            ;Load 3f80h with variable_1
+0095 75A680     122            MOV IAPAL, #80h
+0098 8530AE     123            MOV IAPFD, variable_1
+009B 75C7AA     124            MOV TA, #0aah
+009E 75C755     125            MOV TA, #55h
+00A1 43A401     126            ORL IAPTRG,#00000001b
+00A4            127            
+00A4            128            ;Load 3f81h with variable_2
+00A4 75A681     129            MOV IAPAL, #81h
+00A7 8531AE     130            MOV IAPFD, variable_2
+00AA 75C7AA     131            MOV TA, #0aah
+00AD 75C755     132            MOV TA, #55h
+00B0 43A401     133            ORL IAPTRG,#00000001b
+00B3            134            
+00B3            135            ;Load 3f82h with variable_3
+00B3 75A682     136            MOV IAPAL, #82h
+00B6 8532AE     137            MOV IAPFD, variable_3
+00B9 75C7AA     138            MOV TA, #0aah
+00BC 75C755     139            MOV TA, #55h
+00BF 43A401     140            ORL IAPTRG,#00000001b
+00C2            141            
+00C2            142            ;Load 3f83h with variable_4
+00C2 75A683     143            MOV IAPAL, #83h
+00C5 8533AE     144            MOV IAPFD, variable_4
+00C8 75C7AA     145            MOV TA, #0aah
+00CB 75C755     146            MOV TA, #55h
+00CE 43A401     147            ORL IAPTRG,#00000001b
+00D1            148   
+00D1            149            ;Load 3f84h with 55h
+00D1 75A684     150            MOV IAPAL,#84h
+00D4 75AE55     151            MOV IAPFD, #55h
+00D7 75C7AA     152            MOV TA, #0aah
+00DA 75C755     153            MOV TA, #55h
+00DD 43A401     154            ORL IAPTRG, #00000001b
+00E0            155   
+00E0            156            ;Load 3f85h with aah
+00E0 75A685     157            MOV IAPAL, #85h
+00E3 75AEAA     158            MOV IAPFD, #0aah
+00E6 75C7AA     159            MOV TA, #0aah
+00E9 75C755     160            MOV TA, #55h
+00EC 43A401     161            ORL IAPTRG, #00000001b
+00EF            162   
+00EF 75C7AA     163            MOV TA, #0aah
+00F2 75C755     164            MOV TA, #55h
+00F5 53A5FE     165            ANL IAPUEN, #11111110b ; APUEN = 0, disable APROM update
+00F8 75C7AA     166            MOV TA, #0aah
+00FB 75C755     167            MOV TA, #55h
+00FE 539FFE     168            ANL CHPCON, #11111110b ; IAPEN = 0, disable IAP mode
+0101            169            
+0101 D2AF       170            setb EA  ; Re-enable interrupts
+0103            171   
+0103 22         172            ret
+0104            173   
+0104            174   Load_Variables:
+0104 903F84     175            mov dptr, #0x3f84  ; First key value location.  Must be 0x55
+0107 E4         176            clr a
+0108 93         177            movc a, @a+dptr
+0109 B4551D     178            cjne a, #0x55, Load_Defaults
+010C A3         179            inc dptr      ; Second key value location.  Must be 0xaa
+010D E4         180            clr a
+010E 93         181            movc a, @a+dptr
+010F B4AA17     182            cjne a, #0xaa, Load_Defaults
+0112            183            
+0112 903F80     184            mov dptr, #0x3f80
+0115 E4         185            clr a
+0116 93         186            movc a, @a+dptr
+0117 F530       187            mov variable_1, a
+0119            188            
+0119 A3         189            inc dptr
+011A E4         190            clr a
+011B 93         191            movc a, @a+dptr
+011C F531       192            mov variable_2, a
+011E            193            
+011E A3         194            inc dptr
+011F E4         195            clr a
+0120 93         196            movc a, @a+dptr
+0121 F532       197            mov variable_3, a
+0123            198            
+0123 A3         199            inc dptr
+0124 E4         200            clr a
+0125 93         201            movc a, @a+dptr
+0126 F533       202            mov variable_4, a
+0128 22         203            ret
+0129            204   
+0129            205   Load_Defaults:
+0129 753001     206            mov variable_1, #1
+012C 753102     207            mov variable_2, #2
+012F 753203     208            mov variable_3, #3
+0132 753304     209            mov variable_4, #4
+0135 22         210            ret
+0136            211   
+0136 0D0A5468   212   msg0: db '\r\nThis program illustrates how to use flash memory for\r\n'
+     69732070
+     726F6772
+     616D2069
+     6C6C7573
+     74726174
+     65732068
+     6F772074
+     6F207573
+     6520666C
+     61736820
+     6D656D6F
+     72792066
+     6F720D0A
+016E 6E6F6E2D   213         db 'non-volatile storage of variables.\r\n'
+     766F6C61
+     74696C65
+     2073746F
+     72616765
+     206F6620
+     76617269
+     61626C65
+     732E0D0A
+0192 41667465   214         db 'After each power-on or reset, the variables are loaded from\r\n'
+     72206561
+     63682070
+     6F776572
+     2D6F6E20
+     6F722072
+     65736574
+     2C207468
+     65207661
+     72696162
+     6C657320
+     61726520
+     6C6F6164
+     65642066
+     726F6D0D
+     0A
+01CF 666C6173   215         db 'flash memory, incremented, and the new values are stored back\r\n'
+     68206D65
+     6D6F7279
+     2C20696E
+     6372656D
+     656E7465
+     642C2061
+     6E642074
+     6865206E
+     65772076
+     616C7565
+     73206172
+     65207374
+     6F726564
+     20626163
+     6B0D0A
+020E 696E746F   216         db 'into flash memory.\r\n\r\n',0
+     20666C61
+     7368206D
+     656D6F72
+     792E0D0A
+     0D0A00
+0225            217   msg1:
+0225 76617269   218              DB 'variable_', 0
+     61626C65
+     5F00
+022F            219   
+022F            220   Display_Variables:
+022F 900225     221            mov dptr, #msg1
+0232 120035     222            lcall SendString
+0235 7431       223            mov a, #'1'
+0237 12002D     224            lcall putchar
+023A 743D       225            mov a, #'='
+023C 12002D     226            lcall putchar
+023F E530       227            mov a, variable_1
+0241 120040     228            lcall Send_byte
+0244            229   
+0244 900225     230            mov dptr, #msg1
+0247 120035     231            lcall SendString
+024A 7432       232            mov a, #'2'
+024C 12002D     233            lcall putchar
+024F 743D       234            mov a, #'='
+0251 12002D     235            lcall putchar
+0254 E531       236            mov a, variable_2
+0256 120040     237            lcall Send_byte
+0259            238   
+0259 900225     239            mov dptr, #msg1
+025C 120035     240            lcall SendString
+025F 7433       241            mov a, #'3'
+0261 12002D     242            lcall putchar
+0264 743D       243            mov a, #'='
+0266 12002D     244            lcall putchar
+0269 E532       245            mov a, variable_3
+026B 120040     246            lcall Send_byte
+026E            247   
+026E 900225     248            mov dptr, #msg1
+0271 120035     249            lcall SendString
+0274 7434       250            mov a, #'4'
+0276 12002D     251            lcall putchar
+0279 743D       252            mov a, #'='
+027B 12002D     253            lcall putchar
+027E E533       254            mov a, variable_4
+0280 120040     255            lcall Send_byte
+0283            256   
+0283 22         257            ret
+0284            258            
+0284            259   MyProgram:
+0284 75817F     260            mov sp, #07FH
+0287 120003     261            lcall INIT_ALL
+028A            262            
+028A 900136     263            mov dptr, #msg0
+028D 120035     264            lcall SendString
+0290            265            
+0290 120104     266            lcall Load_Variables ; Get the old variable values stored in flash memory
+0293 0530       267            inc variable_1
+0295 0531       268            inc variable_2
+0297 0532       269            inc variable_3
+0299 0533       270            inc variable_4
+029B 12022F     271            lcall Display_Variables
+029E 120066     272            lcall Save_Variables ; Save the new values into flash memory
+02A1            273   
+02A1            274   Forever:
+02A1 0202A1     275            ljmp Forever
+02A4            276            
+02A4            277   END

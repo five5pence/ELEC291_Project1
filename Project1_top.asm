@@ -36,22 +36,19 @@ CLK               EQU 16600000 ; Microcontroller system frequency in Hz
 BAUD              EQU 115200 ; Baud rate of UART in bps
 TIMER1_RELOAD     EQU (0x100-(CLK/(16*BAUD)))
 TIMER0_RELOAD_1MS EQU (0x10000-(CLK/1000))
-TIMER2_RATE         EQU 100      ; 100Hz or 10ms
-TIMER2_RELOAD       EQU (65536-(CLK/(16*TIMER2_RATE))) ; Need to change timer 2 input divide to 16 in T2MOD
 
 ORG 0x0000
     ljmp main
 
-
 ; Initialization Messages
 temperature_message:     db 'O=       J=     ', 0
 
-state0:	   db 'X', 0
-state1:	   db '1', 0
-state2:	   db '2', 0
-state3:	   db '3', 0
-state4:	   db '4', 0
-state5:	   db '5', 0
+state0:	   db 'State 0', 0
+state1:	   db 'State 1', 0
+state2:	   db 'State 2', 0
+state3:	   db 'State 3', 0
+state4:	   db 'State 4', 0
+state5:	   db 'State 5', 0
 
 cseg
 
@@ -64,7 +61,6 @@ thermocouple_in equ P1.1
 ; OUTPUTS
 oven_out equ P1.2
 speaker_out equ P1.6
-PWM_OUT equ P1.2
 
 CSEG
 ; LCD
@@ -90,13 +86,8 @@ y:   ds 4
 amb_temp: ds 4 ; ambient temperature read by LM335
 bcd: ds 5
 
-DSEG at 0x30
-pwm_counter:  ds 1 ; Free running counter 0, 1, 2, ..., 100, 0
-pwm:          ds 1 ; pwm percentage
-seconds:      ds 1 ; a seconds counter attached to Timer 2 ISR
-
-
 DSEG
+pwm: ds 1
 state: ds 1
 temp_soak: ds 1
 Time_soak: ds 1
@@ -111,7 +102,6 @@ FSM1_state: ds 1
 
 BSEG
 mf: dbit 1
-s_flag: dbit 1 ; set to 1 every time a second has passed
 
 ; These eight bit variables store the value of the pushbuttons after calling 'ADC_to_PB' below
 PB0: dbit 1
@@ -122,8 +112,6 @@ PB4: dbit 1
 PB5: dbit 1
 PB6: dbit 1
 PB7: dbit 1
-
-start_stop_flag: dbit 1 ;
 
 ; MATH32
 $NOLIST
@@ -191,7 +179,7 @@ Init_All:
 	orl	CKCON,#0x08 ; CLK is the input for timer 0
 	anl	TMOD,#0xF0 ; Clear the configuration bits for timer 0
 	orl	TMOD,#0x01 ; Timer 0 in Mode 1: 16-bit timer
-
+	
 	; Initialize the pin used by the ADC (P1.1) as input.
 	orl	P1M1, #0b00000010
 	anl	P1M2, #0b11111101
@@ -214,7 +202,6 @@ Init_All:
 	orl ADCCON1, #0x01 ; Enable ADC
 	
 	ret
-
 
 ; Flash Memory Subroutines
 ;******************************************************************************
@@ -240,7 +227,7 @@ Save_Variables:
 	MOV IAPFD, #0FFh ; Data to load into the address byte
 	MOV TA, #0aah ; IAPTRG is TA protected
 	MOV TA, #55h
-	ORL IAPTRG, #00000001b ; write �1� to IAPGO to trigger IAP process
+	ORL IAPTRG, #00000001b ; write ?1? to IAPGO to trigger IAP process
 	
 	MOV IAPCN, #BYTE_PROGRAM_AP
 	MOV IAPAH, #3fh
@@ -460,29 +447,20 @@ main:
 	mov Time_refl, #45
 	mov sec, #0
 
-	clr start_stop_flag
-	Set_Cursor(2,16)
-	Send_Constant_String(#state0)
-
 Forever:
+	jb PB4, continue
 
-; START/STOP BUTTON
-	jb PB4, start_stop_done
-	cpl start_stop_flag
-	jb start_stop_flag, turn_on_start
-	; CONTROLLER IS OFF (STATE 0)
-	mov FSM1_state, #0
-	Set_Cursor(2,16)
-	Send_Constant_String(#state0)
-	ljmp start_stop_done
-
-; CONTROLLER IS ON (STATE 1)
-turn_on_start:
+turn_on:
+	mov a, FSM1_state
+	cjne a, #0, turn_off
 	mov FSM1_state, #1
-	Set_Cursor(2,16)
-	Send_Constant_String(#state1)
+	sjmp continue
 
-start_stop_done: 
+turn_off:
+	mov FSM1_state, #0
+	sjmp continue
+
+continue:
 	lcall ADC_to_PB
 	;lcall Display_PushButtons_ADC
 	
@@ -592,15 +570,15 @@ FSM1_state0:
 	Set_Cursor(2, 5)
 	Send_Constant_String(#state0)
 	mov pwm, #0
-	jb PB0, FSM1_state0_done
-	mov FSM1_state, #1
+	;jb PB4, FSM1_state0_done
+	;mov FSM1_state, #1
 FSM1_state0_done:
 	ljmp Forever
 
 ; pre-heat state. Should go to state two when temp reaches temp_soak	
 FSM1_state1:
 	cjne a, #1, FSM1_state2
-	Set_Cursor(2, 16)
+	Set_Cursor(2, 5)
 	Send_Constant_String(#state1)
 	
 	clr P1.6
@@ -623,7 +601,7 @@ FSM1_state1_done:
 FSM1_state2:
 	setb P1.6 ;speaker
 	cjne a, #2, FSM1_state3
-	Set_Cursor(2, 16)
+	Set_Cursor(2, 5)
 	Send_Constant_String(#state2)
 	mov pwm, #20
 	
@@ -649,7 +627,7 @@ ljmp FSM1_state0
 ;State 3
 FSM1_state3:
 	cjne a, #3, FSM1_state4
-	Set_Cursor(2, 16)
+	Set_Cursor(2, 5)
 	Send_Constant_String(#state3)
 	mov pwm, #100
 	mov sec, #0
@@ -667,7 +645,7 @@ FSM1_state3_done:
 ;State 4
 FSM1_state4:
 	cjne a, #4, FSM1_state5
-	Set_Cursor(2, 16)
+	Set_Cursor(2, 5)
 	Send_Constant_String(#state4)
 	mov pwm, #20
 	
@@ -688,7 +666,7 @@ FSM1_state4_done:
 	
 FSM1_state5:
 	cjne a, #5, jump
-	Set_Cursor(2, 16)
+	Set_Cursor(2, 5)
 	Send_Constant_String(#state5)
 	mov pwm, #0
 	

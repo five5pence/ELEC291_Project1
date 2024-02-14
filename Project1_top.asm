@@ -373,7 +373,7 @@ ADC_to_PB_L7:
 	clr c
 	mov a, ADCRH
 	subb a, #0xf0
-	jc ADC_to_PB_L6
+	jc ADC_to_PB_L6q
 	clr PB7
 	ret
 

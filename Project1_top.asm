@@ -448,7 +448,7 @@ main:
 	mov sec, #0
 
 Forever:
-	jb PB4, continue
+	jb PB0, continue
 
 turn_on:
 	mov a, FSM1_state
@@ -570,7 +570,7 @@ FSM1_state0:
 	Set_Cursor(2, 16)
 	Send_Constant_String(#state0)
 	mov pwm, #0
-	;jb PB4, FSM1_state0_done
+	;jb PB0, FSM1_state0_done
 	;mov FSM1_state, #1
 FSM1_state0_done:
 	ljmp Forever

@@ -617,6 +617,7 @@ FSM1_state1:
 	jnc FSM1_state1_done
 	mov FSM1_state, #2
 FSM1_state1_done:
+	
 	ljmp Forever
 
 ; State 2

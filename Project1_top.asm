@@ -36,9 +36,15 @@ CLK               EQU 16600000 ; Microcontroller system frequency in Hz
 BAUD              EQU 115200 ; Baud rate of UART in bps
 TIMER1_RELOAD     EQU (0x100-(CLK/(16*BAUD)))
 TIMER0_RELOAD_1MS EQU (0x10000-(CLK/1000))
+TIMER2_RATE         EQU 100      ; 100Hz or 10ms
+TIMER2_RELOAD       EQU (65536-(CLK/(16*TIMER2_RATE))) ; Need to change timer 2 input divide to 16 in T2MOD
 
 ORG 0x0000
     ljmp main
+
+; Timer/Counter 2 overflow interrupt vector
+org 0x002B
+	ljmp Timer2_ISR
 
 ; Initialization Messages
 temperature_message:     db 'O=       J=     ', 0
@@ -64,6 +70,7 @@ thermocouple_in equ P1.1
 ; OUTPUTS
 oven_out equ P1.2
 speaker_out equ P1.6
+PWM_OUT equ P1.2
 
 CSEG
 ; LCD
@@ -89,8 +96,13 @@ y:   ds 4
 amb_temp: ds 4 ; ambient temperature read by LM335
 bcd: ds 5
 
+DSEG at 0x30
+pwm_counter:  ds 1 ; Free running counter 0, 1, 2, ..., 100, 0
+pwm:          ds 1 ; pwm percentage
+seconds:      ds 1 ; a seconds counter attached to Timer 2 ISR
+
+
 DSEG
-pwm: ds 1
 state: ds 1
 temp_soak: ds 1
 Time_soak: ds 1
@@ -105,6 +117,7 @@ FSM1_state: ds 1
 
 BSEG
 mf: dbit 1
+s_flag: dbit 1 ; set to 1 every time a second has passed
 
 ; These eight bit variables store the value of the pushbuttons after calling 'ADC_to_PB' below
 PB0: dbit 1
@@ -184,6 +197,22 @@ Init_All:
 	orl	CKCON,#0x08 ; CLK is the input for timer 0
 	anl	TMOD,#0xF0 ; Clear the configuration bits for timer 0
 	orl	TMOD,#0x01 ; Timer 0 in Mode 1: 16-bit timer
+
+	; Initialize timer 2 for periodic interrupts
+	mov T2CON, #0 ; Stop timer/counter.  Autoreload mode.
+	mov TH2, #high(TIMER2_RELOAD)
+	mov TL2, #low(TIMER2_RELOAD)
+	; Set the reload value
+	mov T2MOD, #0b1010_0000 ; Enable timer 2 autoreload, and clock divider is 16
+	mov RCMP2H, #high(TIMER2_RELOAD)
+	mov RCMP2L, #low(TIMER2_RELOAD)
+	; Init the free running 10 ms counter to zero
+	mov pwm_counter, #0
+	; Enable the timer and interrupts
+	orl EIE, #0x80 ; Enable timer 2 interrupt ET2=1
+    setb TR2  ; Enable timer 2
+
+	setb EA ; Enable global interrupts
 	
 	; Initialize the pin used by the ADC (P1.1) as input.
 	orl	P1M1, #0b00000010
@@ -207,6 +236,32 @@ Init_All:
 	orl ADCCON1, #0x01 ; Enable ADC
 	
 	ret
+
+;---------------------------------;
+; ISR for timer 2                 ;
+;---------------------------------;
+Timer2_ISR:
+	clr TF2  ; Timer 2 doesn't clear TF2 automatically. Do it in the ISR.  It is bit addressable.
+	push psw
+	push acc
+	
+	inc pwm_counter
+	clr c
+	mov a, pwm
+	subb a, pwm_counter ; If pwm_counter <= pwm then c=1
+	cpl c
+	mov PWM_OUT, c
+	
+	mov a, pwm_counter
+	cjne a, #100, Timer2_ISR_done
+	mov pwm_counter, #0
+	inc seconds ; It is super easy to keep a seconds count here
+	setb s_flag
+
+Timer2_ISR_done:
+	pop acc
+	pop psw
+	reti
 
 ; Flash Memory Subroutines
 ;******************************************************************************

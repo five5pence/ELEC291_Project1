@@ -448,6 +448,13 @@ main:
 	mov sec, #0
 
 Forever:
+	jb PB6, increase
+decrease:
+	ljmp continue1
+increase:
+	ljmp continue1
+
+continue1:
 	jb PB0, continue
 
 turn_on:

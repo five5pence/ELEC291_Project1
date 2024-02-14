@@ -36,9 +36,15 @@ CLK               EQU 16600000 ; Microcontroller system frequency in Hz
 BAUD              EQU 115200 ; Baud rate of UART in bps
 TIMER1_RELOAD     EQU (0x100-(CLK/(16*BAUD)))
 TIMER0_RELOAD_1MS EQU (0x10000-(CLK/1000))
+TIMER2_RATE         EQU 100      ; 100Hz or 10ms
+TIMER2_RELOAD       EQU (65536-(CLK/(16*TIMER2_RATE))) ; Need to change timer 2 input divide to 16 in T2MOD
 
 ORG 0x0000
     ljmp main
+
+; Timer/Counter 2 overflow interrupt vector
+org 0x002B
+	ljmp Timer2_ISR
 
 ; Initialization Messages
 temperature_message:     db 'O=       J=     ', 0
@@ -61,6 +67,7 @@ thermocouple_in equ P1.1
 ; OUTPUTS
 oven_out equ P1.2
 speaker_out equ P1.6
+PWM_OUT equ P1.2
 
 CSEG
 ; LCD
@@ -86,8 +93,13 @@ y:   ds 4
 amb_temp: ds 4 ; ambient temperature read by LM335
 bcd: ds 5
 
+DSEG at 0x30
+pwm_counter:  ds 1 ; Free running counter 0, 1, 2, ..., 100, 0
+pwm:          ds 1 ; pwm percentage
+seconds:      ds 1 ; a seconds counter attached to Timer 2 ISR
+
+
 DSEG
-pwm: ds 1
 state: ds 1
 temp_soak: ds 1
 Time_soak: ds 1
@@ -95,13 +107,14 @@ Temp_refl: ds 1
 Time_refl: ds 1
 
 sec: ds 1
-temp: ds 1
+temp: ds 2
 
 
 FSM1_state: ds 1
 
 BSEG
 mf: dbit 1
+s_flag: dbit 1 ; set to 1 every time a second has passed
 
 ; These eight bit variables store the value of the pushbuttons after calling 'ADC_to_PB' below
 PB0: dbit 1
@@ -181,6 +194,22 @@ Init_All:
 	orl	CKCON,#0x08 ; CLK is the input for timer 0
 	anl	TMOD,#0xF0 ; Clear the configuration bits for timer 0
 	orl	TMOD,#0x01 ; Timer 0 in Mode 1: 16-bit timer
+
+	; Initialize timer 2 for periodic interrupts
+	mov T2CON, #0 ; Stop timer/counter.  Autoreload mode.
+	mov TH2, #high(TIMER2_RELOAD)
+	mov TL2, #low(TIMER2_RELOAD)
+	; Set the reload value
+	mov T2MOD, #0b1010_0000 ; Enable timer 2 autoreload, and clock divider is 16
+	mov RCMP2H, #high(TIMER2_RELOAD)
+	mov RCMP2L, #low(TIMER2_RELOAD)
+	; Init the free running 10 ms counter to zero
+	mov pwm_counter, #0
+	; Enable the timer and interrupts
+	orl EIE, #0x80 ; Enable timer 2 interrupt ET2=1
+    setb TR2  ; Enable timer 2
+
+	setb EA ; Enable global interrupts
 	
 	; Initialize the pin used by the ADC (P1.1) as input.
 	orl	P1M1, #0b00000010
@@ -204,6 +233,32 @@ Init_All:
 	orl ADCCON1, #0x01 ; Enable ADC
 	
 	ret
+
+;---------------------------------;
+; ISR for timer 2                 ;
+;---------------------------------;
+Timer2_ISR:
+	clr TF2  ; Timer 2 doesn't clear TF2 automatically. Do it in the ISR.  It is bit addressable.
+	push psw
+	push acc
+	
+	inc pwm_counter
+	clr c
+	mov a, pwm
+	subb a, pwm_counter ; If pwm_counter <= pwm then c=1
+	cpl c
+	mov PWM_OUT, c
+	
+	mov a, pwm_counter
+	cjne a, #100, Timer2_ISR_done
+	mov pwm_counter, #0
+	inc seconds ; It is super easy to keep a seconds count here
+	setb s_flag
+
+Timer2_ISR_done:
+	pop acc
+	pop psw
+	reti
 
 ; Flash Memory Subroutines
 ;******************************************************************************
@@ -445,7 +500,7 @@ main:
 	mov FSM1_state, #0
     mov Temp_soak, #50
 	mov Time_soak, #60
-	mov Temp_refl, #220
+	mov Temp_refl, #200
 	mov Time_refl, #45
 	mov sec, #0
 
@@ -564,7 +619,8 @@ start_stop_done:
 	; Storing the thermocouple temperature into var temp 
 	Load_y(10000)
 	lcall div32
-	mov temp, x+0
+	mov temp+0, x+0
+	mov temp+1, x+1
 	
 	; Wait 100 ms between readings
 	mov R2, #100
@@ -597,8 +653,7 @@ FSM1_state1:
 	mov sec, #0
 	
 	; These two lines are temporary. temp should be read from the thermocouple wire
-	mov temp_soak, #50
-	;mov temp, #15
+	mov temp_soak, #100
 	
 	mov a, temp_soak
 	setb c
@@ -643,7 +698,6 @@ FSM1_state3:
 	mov pwm, #100
 	mov sec, #0
 	
-	mov temp, #250
 	
 	mov a, Temp_refl
 	clr c
@@ -682,12 +736,11 @@ FSM1_state5:
 	Send_Constant_String(#state5)
 	mov pwm, #0
 	
-	mov temp, #70
 	
 	mov a, #60
 	clr c
 	subb a, temp
-	jnc FSM1_state5_done
+	jc FSM1_state5_done
 	mov FSM1_state,#0
 FSM1_state5_done:
 	lcall Save_Variables ; Save variables in flash memory

@@ -589,7 +589,7 @@ FSM1:
 ; off state. Should go to state 1 when start button is pressed (Button 8 right now)
 FSM1_state0:
 	cjne a, #0, FSM1_state1
-	Set_Cursor(2, 5)
+	Set_Cursor(2, 16)
 	Send_Constant_String(#state0)
 	mov pwm, #0
 	jb PB0, FSM1_state0_done

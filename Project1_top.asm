@@ -360,7 +360,7 @@ ADC_to_PB_L7:
 	clr c
 	mov a, ADCRH
 	subb a, #0xf0
-	jc ADC_to_PB_L6q
+	jc ADC_to_PB_L6
 	clr PB7
 	ret
 
@@ -567,7 +567,7 @@ FSM1:
 ; off state. Should go to state 1 when start button is pressed (Button 8 right now)
 FSM1_state0:
 	cjne a, #0, FSM1_state1
-	Set_Cursor(2, 16)
+	Set_Cursor(2, 5)
 	Send_Constant_String(#state0)
 	mov pwm, #0
 	;jb PB4, FSM1_state0_done
@@ -595,7 +595,6 @@ FSM1_state1:
 	jnc FSM1_state1_done
 	mov FSM1_state, #2
 FSM1_state1_done:
-	
 	ljmp Forever
 
 ; State 2

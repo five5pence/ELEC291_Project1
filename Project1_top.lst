@@ -34,847 +34,792 @@
 0000             36   BAUD              EQU 115200 ; Baud rate of UART in bps
 0000             37   TIMER1_RELOAD     EQU (0x100-(CLK/(16*BAUD)))
 0000             38   TIMER0_RELOAD_1MS EQU (0x10000-(CLK/1000))
-0000             39   TIMER2_RATE         EQU 100      ; 100Hz or 10ms
-0000             40   TIMER2_RELOAD       EQU (65536-(CLK/(16*TIMER2_RATE))) ; Need to change timer 2 input divide to 16 in T2MOD
-0000             41   
-0000             42   ORG 0x0000
-0000 020537      43       ljmp main
-0003             44   
-0003             45   
-0003             46   ; Initialization Messages
-0003 4F3D2020    47   temperature_message:     db 'O=       J=     ', 0
+0000             39   
+0000             40   ORG 0x0000
+0000 020556      41       ljmp main
+0003             42   
+0003             43   ; Initialization Messages
+0003 4F3D2020    44   temperature_message:     db 'O=       J=     ', 0
      20202020
      204A3D20
      20202020
      00
-0014 636F6F6C    48   check_message: db 'cool', 0
-     00
-0019             49   
-0019 5800        50   state0:     db 'X', 0
-001B 3100        51   state1:     db '1', 0
-001D 3200        52   state2:     db '2', 0
-001F 3300        53   state3:     db '3', 0
-0021 3400        54   state4:     db '4', 0
-0023 3500        55   state5:     db '5', 0
-0025             56   
-0025             57   cseg
-0025             58   
-0025             59   ; SYMBOLIC CONSTANTS
-0025             60   
-0025             61   ; INPUTS
-0025             62   tempsensor_in equ P3.0
-0025             63   thermocouple_in equ P1.1
-0025             64   
-0025             65   ; OUTPUTS
-0025             66   oven_out equ P1.2
-0025             67   speaker_out equ P1.6
-0025             68   PWM_OUT equ P1.2
-0025             69   
-0025             70   CSEG
-0025             71   ; LCD
-0025             72   LCD_RS equ P1.3
-0025             73   LCD_E equ P1.4
-0025             74   LCD_D4 equ P0.0
-0025             75   LCD_D5 equ P0.1
-0025             76   LCD_D6 equ P0.2
-0025             77   LCD_D7 equ P0.3
-0025             78   
-                 80   	$LIST
-00D9             82   
-00D9             83   ; Flash instructions
-00D9             84   PAGE_ERASE_AP   EQU 00100010b
-00D9             85   BYTE_PROGRAM_AP EQU 00100001b
-00D9             86   
-00D9             87   ; These register definitions needed by 'math32.inc'
-0030             88   DSEG at 30H
-0030             89   x:   ds 4
-0034             90   y:   ds 4
-0038             91   amb_temp: ds 4 ; ambient temperature read by LM335
-003C             92   bcd: ds 5
-0041             93   
-0030             94   DSEG at 0x30
-0030             95   pwm_counter:  ds 1 ; Free running counter 0, 1, 2, ..., 100, 0
-0031             96   pwm:          ds 1 ; pwm percentage
-0032             97   seconds:      ds 1 ; a seconds counter attached to Timer 2 ISR
-0033             98   
-0033             99   
-0033            100   DSEG
-0033            101   state: ds 1
-0034            102   temp_soak: ds 1
-0035            103   Time_soak: ds 1
-0036            104   Temp_refl: ds 1
-0037            105   Time_refl: ds 1
-0038            106   
-0038            107   sec: ds 1
-0039            108   temp: ds 2
-003B            109   
-003B            110   
-003B            111   FSM1_state: ds 1
-003C            112   
-0000            113   BSEG
-0000            114   mf: dbit 1
-0001            115   s_flag: dbit 1 ; set to 1 every time a second has passed
-0002            116   
-0002            117   ; These eight bit variables store the value of the pushbuttons after calling 'ADC_to_PB' below
-0002            118   PB0: dbit 1
-0003            119   PB1: dbit 1
-0004            120   PB2: dbit 1
-0005            121   PB3: dbit 1
-0006            122   PB4: dbit 1
-0007            123   PB5: dbit 1
-0008            124   PB6: dbit 1
-0009            125   PB7: dbit 1
-000A            126   
-000A            127   start_stop_flag: dbit 1 ;
-000B            128   
-000B            129   ; MATH32
+0014             45   
+0014 53746174    46   state0:     db 'State 0', 0
+     65203000
+001C 53746174    47   state1:     db 'State 1', 0
+     65203100
+0024 53746174    48   state2:     db 'State 2', 0
+     65203200
+002C 53746174    49   state3:     db 'State 3', 0
+     65203300
+0034 53746174    50   state4:     db 'State 4', 0
+     65203400
+003C 53746174    51   state5:     db 'State 5', 0
+     65203500
+0044             52   
+0044             53   cseg
+0044             54   
+0044             55   ; SYMBOLIC CONSTANTS
+0044             56   
+0044             57   ; INPUTS
+0044             58   tempsensor_in equ P3.0
+0044             59   thermocouple_in equ P1.1
+0044             60   
+0044             61   ; OUTPUTS
+0044             62   oven_out equ P1.2
+0044             63   speaker_out equ P1.6
+0044             64   
+0044             65   CSEG
+0044             66   ; LCD
+0044             67   LCD_RS equ P1.3
+0044             68   LCD_E equ P1.4
+0044             69   LCD_D4 equ P0.0
+0044             70   LCD_D5 equ P0.1
+0044             71   LCD_D6 equ P0.2
+0044             72   LCD_D7 equ P0.3
+0044             73   
+                 75   	$LIST
+00F8             77   
+00F8             78   ; Flash instructions
+00F8             79   PAGE_ERASE_AP   EQU 00100010b
+00F8             80   BYTE_PROGRAM_AP EQU 00100001b
+00F8             81   
+00F8             82   ; These register definitions needed by 'math32.inc'
+0030             83   DSEG at 30H
+0030             84   x:   ds 4
+0034             85   y:   ds 4
+0038             86   amb_temp: ds 4 ; ambient temperature read by LM335
+003C             87   bcd: ds 5
+0041             88   
+0041             89   DSEG
+0041             90   pwm: ds 1
+0042             91   state: ds 1
+0043             92   temp_soak: ds 1
+0044             93   Time_soak: ds 1
+0045             94   Temp_refl: ds 1
+0046             95   Time_refl: ds 1
+0047             96   
+0047             97   sec: ds 1
+0048             98   temp: ds 2
+004A             99   
+004A            100   
+004A            101   FSM1_state: ds 1
+004B            102   
+0000            103   BSEG
+0000            104   mf: dbit 1
+0001            105   
+0001            106   ; These eight bit variables store the value of the pushbuttons after calling 'ADC_to_PB' below
+0001            107   PB0: dbit 1
+0002            108   PB1: dbit 1
+0003            109   PB2: dbit 1
+0004            110   PB3: dbit 1
+0005            111   PB4: dbit 1
+0006            112   PB5: dbit 1
+0007            113   PB6: dbit 1
+0008            114   PB7: dbit 1
+0009            115   
+0009            116   ; MATH32
                 546   $LIST
-                131   $LIST
-0349            133   
-0349            134   ; Blank Macro
-                135   Left_blank mac
-                136   	mov a, %0
-                137   	anl a, #0xf0
-                138   	swap a
-                139   	jz Left_blank_%M_a
-                140   	ljmp %1
-                141   Left_blank_%M_a:
-                142   	Display_char(#' ')
-                143   	mov a, %0
-                144   	anl a, #0x0f
-                145   	jz Left_blank_%M_b
-                146   	ljmp %1
-                147   Left_blank_%M_b:
-                148   	Display_char(#' ')
-                149   endmac
-0349            150   
-0349            151   ; Formatting to display thermocouple temperature
-0349            152   ; Display: 0000.00
-0349            153   Display_formated_BCD_To:
-0349 C000       154            push ar0
-034B A83F       154            mov r0, bcd+3
-034D 1200C3     154            lcall ?Display_BCD
-0350 D000       154            pop ar0
-0352 C000       155            push ar0
-0354 A83E       155            mov r0, bcd+2
-0356 1200C3     155            lcall ?Display_BCD
-0359 D000       155            pop ar0
-035B C0E0       156            push acc
-035D 742E       156            mov a, #'.'
-035F 120074     156            lcall ?WriteData
-0362 D0E0       156            pop acc
-0364 C000       157            push ar0
-0366 A83D       157            mov r0, bcd+1
-0368 1200C3     157            lcall ?Display_BCD
-036B D000       157            pop ar0
-036D            158   
-036D            159   
-036D 22         160            ret
-036E            161            
-036E            162   ; Formatting to display ambient temperature
-036E            163   ; Display: 00.00
-036E            164   Display_formated_BCD_Tj:
-036E C000       165            push ar0
-0370 A83E       165            mov r0, bcd+2
-0372 1200C3     165            lcall ?Display_BCD
-0375 D000       165            pop ar0
-0377 C0E0       166            push acc
-0379 742E       166            mov a, #'.'
-037B 120074     166            lcall ?WriteData
-037E D0E0       166            pop acc
-0380 C000       167            push ar0
-0382 A83D       167            mov r0, bcd+1
-0384 1200C3     167            lcall ?Display_BCD
-0387 D000       167            pop ar0
-0389 22         168            ret
-038A            169   
-038A            170   
-038A            171   ; INITIALIZATION SUBROUTINES
-038A            172   Init_All:
-038A            173            ; Configure all the pins for biderectional I/O
-038A 75AC00     174            mov     P3M1, #0x00
-038D 75AD00     175            mov     P3M2, #0x00
-0390 75B300     176            mov     P1M1, #0x00
-0393 75B400     177            mov     P1M2, #0x00
-0396 75B100     178            mov     P0M1, #0x00
-0399 75B200     179            mov     P0M2, #0x00
-039C            180   
-039C 438E10     181            orl     CKCON, #0x10 ; CLK is the input for timer 1
-039F 438780     182            orl     PCON, #0x80 ; Bit SMOD=1, double baud rate
-03A2 759852     183            mov     SCON, #0x52
-03A5 53C4DF     184            anl     T3CON, #0b11011111
-03A8 53890F     185            anl     TMOD, #0x0F ; Clear the configuration bits for timer 1
-03AB 438920     186            orl     TMOD, #0x20 ; Timer 1 Mode 2
-03AE 758DF7     187            mov     TH1, #TIMER1_RELOAD ; TH1=TIMER1_RELOAD;
-03B1 D28E       188            setb TR1
-03B3            189            
-03B3            190            ; Using timer 0 for delay functions.  Initialize here:
-03B3 C28C       191            clr     TR0 ; Stop timer 0
-03B5 438E08     192            orl     CKCON,#0x08 ; CLK is the input for timer 0
-03B8 5389F0     193            anl     TMOD,#0xF0 ; Clear the configuration bits for timer 0
-03BB 438901     194            orl     TMOD,#0x01 ; Timer 0 in Mode 1: 16-bit timer
-03BE            195   
-03BE            196            ; Initialize the pin used by the ADC (P1.1) as input.
-03BE 43B302     197            orl     P1M1, #0b00000010
-03C1 53B4FD     198            anl     P1M2, #0b11111101
-03C4            199   
-03C4            200            ; Initialize the pin used by the ADC (P3.0) as input.
-03C4 43AC01     201            orl     P3M1, #0b00000001
-03C7 53ADFE     202            anl     P3M2, #0b11111110
-03CA            203            
-03CA            204            ; Initialize and start the ADC:
-03CA 53E8F0     205            anl ADCCON0, #0xF0
-03CD 43E807     206            orl ADCCON0, #0x07 ; Select channel 7
-03D0            207   
-03D0 53E2F0     208            anl ADCCON2, #0xF0
-03D3 43E201     209            orl ADCCON2, #0x01 ; Select channel 1
-03D6            210   
-03D6            211            ; AINDIDS select if some pins are analog inputs or digital I/O:
-03D6 75F600     212            mov AINDIDS, #0x00 ; Disable all analog inputs
-03D9 43F680     213            orl AINDIDS, #0b10000000 ; P1.1 is analog input
-03DC 43F601     214            orl AINDIDS, #0b00000001 ; P3.0 is analog input
-03DF 43E101     215            orl ADCCON1, #0x01 ; Enable ADC
-03E2            216            
-03E2 22         217            ret
-03E3            218   
-03E3            219   
-03E3            220   ; Flash Memory Subroutines
-03E3            221   ;******************************************************************************
-03E3            222   ; This code illustrates how to use IAP to make APROM 3f80h as a byte of
-03E3            223   ; Data Flash when user code is executed in APROM.
-03E3            224   ; (The base of this code is listed in the N76E003 user manual)
-03E3            225   ;******************************************************************************
-03E3            226   
-03E3            227   Save_Variables:
-03E3 C2AF       228            CLR EA  ; MUST disable interrupts for this to work!
-03E5            229            
-03E5 75C7AA     230            MOV TA, #0aah ; CHPCON is TA protected
-03E8 75C755     231            MOV TA, #55h
-03EB 439F01     232            ORL CHPCON, #00000001b ; IAPEN = 1, enable IAP mode
-03EE            233            
-03EE 75C7AA     234            MOV TA, #0aah ; IAPUEN is TA protected
-03F1 75C755     235            MOV TA, #55h
-03F4 43A501     236            ORL IAPUEN, #00000001b ; APUEN = 1, enable APROM update
-03F7            237            
-03F7 75AF22     238            MOV IAPCN, #PAGE_ERASE_AP ; Erase page 3f80h~3f7Fh
-03FA 75A73F     239            MOV IAPAH, #3fh ; Address high byte
-03FD 75A680     240            MOV IAPAL, #80h ; Address low byte
-0400 75AEFF     241            MOV IAPFD, #0FFh ; Data to load into the address byte
-0403 75C7AA     242            MOV TA, #0aah ; IAPTRG is TA protected
-0406 75C755     243            MOV TA, #55h
-0409 43A401     244            ORL IAPTRG, #00000001b ; write �1� to IAPGO to trigger IAP process
-040C            245            
-040C 75AF21     246            MOV IAPCN, #BYTE_PROGRAM_AP
-040F 75A73F     247            MOV IAPAH, #3fh
-0412            248            
-0412            249            ;Load 3f80h with temp_soak
-0412 75A680     250            MOV IAPAL, #80h
-0415 8534AE     251            MOV IAPFD, temp_soak
-0418 75C7AA     252            MOV TA, #0aah
-041B 75C755     253            MOV TA, #55h
-041E 43A401     254            ORL IAPTRG,#00000001b ; Basically, this executes the write to flash memory
-0421            255            
-0421            256            ;Load 3f81h with Time_soak
-0421 75A681     257            MOV IAPAL, #81h
-0424 8535AE     258            MOV IAPFD, Time_soak
-0427 75C7AA     259            MOV TA, #0aah
-042A 75C755     260            MOV TA, #55h
-042D 43A401     261            ORL IAPTRG,#00000001b
-0430            262            
-0430            263            ;Load 3f82h with Temp_refl
-0430 75A682     264            MOV IAPAL, #82h
-0433 8536AE     265            MOV IAPFD, Temp_refl
-0436 75C7AA     266            MOV TA, #0aah
-0439 75C755     267            MOV TA, #55h
-043C 43A401     268            ORL IAPTRG,#00000001b
-043F            269            
-043F            270            ;Load 3f83h with Time_refl
-043F 75A683     271            MOV IAPAL, #83h
-0442 8537AE     272            MOV IAPFD, Time_refl
-0445 75C7AA     273            MOV TA, #0aah
-0448 75C755     274            MOV TA, #55h
-044B 43A401     275            ORL IAPTRG,#00000001b
-044E            276   
-044E            277            ;Load 3f84h with 55h
-044E 75A684     278            MOV IAPAL,#84h
-0451 75AE55     279            MOV IAPFD, #55h
-0454 75C7AA     280            MOV TA, #0aah
-0457 75C755     281            MOV TA, #55h
-045A 43A401     282            ORL IAPTRG, #00000001b
-045D            283   
-045D            284            ;Load 3f85h with aah (spacer value indicating EOF, will load if something funny happens)
-045D 75A685     285            MOV IAPAL, #85h
-0460 75AEAA     286            MOV IAPFD, #0aah
-0463 75C7AA     287            MOV TA, #0aah
-0466 75C755     288            MOV TA, #55h
-0469 43A401     289            ORL IAPTRG, #00000001b
-046C            290   
-046C 75C7AA     291            MOV TA, #0aah
-046F 75C755     292            MOV TA, #55h
-0472 53A5FE     293            ANL IAPUEN, #11111110b ; APUEN = 0, disable APROM update
-0475 75C7AA     294            MOV TA, #0aah
-0478 75C755     295            MOV TA, #55h
-047B 539FFE     296            ANL CHPCON, #11111110b ; IAPEN = 0, disable IAP mode
-047E            297            
-047E D2AF       298            setb EA  ; Re-enable interrupts
-0480            299   
-0480 22         300            ret
-0481            301   
-0481            302   Load_Variables:
-0481 903F84     303            mov dptr, #0x3f84  ; First key value location.  Must be 0x55
-0484 E4         304            clr a
-0485 93         305            movc a, @a+dptr
-0486 B4551D     306            cjne a, #0x55, Load_Defaults
-0489 A3         307            inc dptr      ; Second key value location.  Must be 0xaa
-048A E4         308            clr a
-048B 93         309            movc a, @a+dptr
-048C B4AA17     310            cjne a, #0xaa, Load_Defaults
-048F            311            
-048F 903F80     312            mov dptr, #0x3f80
-0492 E4         313            clr a
-0493 93         314            movc a, @a+dptr
-0494 F534       315            mov temp_soak, a
-0496            316            
-0496 A3         317            inc dptr
-0497 E4         318            clr a
-0498 93         319            movc a, @a+dptr
-0499 F535       320            mov Time_soak, a
-049B            321            
-049B A3         322            inc dptr
-049C E4         323            clr a
-049D 93         324            movc a, @a+dptr
-049E F536       325            mov Temp_refl, a
-04A0            326            
-04A0 A3         327            inc dptr
-04A1 E4         328            clr a
-04A2 93         329            movc a, @a+dptr
-04A3 F537       330            mov Time_refl, a
-04A5 22         331            ret
-04A6            332   
-04A6            333   Load_Defaults:
-04A6 753401     334            mov temp_soak, #1
-04A9 753502     335            mov Time_soak, #2
-04AC 753603     336            mov Temp_refl, #3
-04AF 753704     337            mov Time_refl, #4
-04B2 22         338            ret
-04B3            339   
-04B3            340   wait_1ms:
-04B3 C28C       341            clr     TR0 ; Stop timer 0
-04B5 C28D       342            clr     TF0 ; Clear overflow flag
-04B7 758CBF     343            mov     TH0, #high(TIMER0_RELOAD_1MS)
-04BA 758A28     344            mov     TL0,#low(TIMER0_RELOAD_1MS)
-04BD D28C       345            setb TR0
-04BF 308DFD     346            jnb     TF0, $ ; Wait for overflow
-04C2 22         347            ret
-04C3            348   
-04C3            349   ; Wait the number of miliseconds in R2
-04C3            350   waitms:
-04C3 1204B3     351            lcall wait_1ms
-04C6 DAFB       352            djnz R2, waitms
-04C8 22         353            ret
-04C9            354   
-04C9            355   ADC_to_PB:
-04C9 53E8F0     356            anl ADCCON0, #0xF0
-04CC 43E800     357            orl ADCCON0, #0x00 ; Select AIN0
-04CF            358            
-04CF C2EF       359            clr ADCF
-04D1 D2EE       360            setb ADCS   ; ADC start trigger signal
-04D3 30EFFD     361       jnb ADCF, $ ; Wait for conversion complete
-04D6            362   
-04D6 D209       363            setb PB7
-04D8 D208       364            setb PB6
-04DA D207       365            setb PB5
-04DC D206       366            setb PB4
-04DE D205       367            setb PB3
-04E0 D204       368            setb PB2
-04E2 D203       369            setb PB1
-04E4 D202       370            setb PB0
-04E6            371            
-04E6            372            ; Check PB7
-04E6            373   ADC_to_PB_L7:
-04E6 C3         374            clr c
-04E7 E5C3       375            mov a, ADCRH
-04E9 94F0       376            subb a, #0xf0
-04EB 4003       377            jc ADC_to_PB_L6
-04ED C209       378            clr PB7
-04EF 22         379            ret
-04F0            380   
-04F0            381            ; Check PB6
-04F0            382   ADC_to_PB_L6:
-04F0 C3         383            clr c
-04F1 E5C3       384            mov a, ADCRH
-04F3 94D0       385            subb a, #0xd0
-04F5 4003       386            jc ADC_to_PB_L5
-04F7 C208       387            clr PB6
-04F9 22         388            ret
-04FA            389   
-04FA            390            ; Check PB5
-04FA            391   ADC_to_PB_L5:
-04FA C3         392            clr c
-04FB E5C3       393            mov a, ADCRH
-04FD 94B0       394            subb a, #0xb0
-04FF 4003       395            jc ADC_to_PB_L4
-0501 C207       396            clr PB5
-0503 22         397            ret
-0504            398   
-0504            399            ; Check PB4
-0504            400   ADC_to_PB_L4:
-0504 C3         401            clr c
-0505 E5C3       402            mov a, ADCRH
-0507 9490       403            subb a, #0x90
-0509 4003       404            jc ADC_to_PB_L3
-050B C206       405            clr PB4
-050D 22         406            ret
-050E            407   
-050E            408            ; Check PB3
-050E            409   ADC_to_PB_L3:
-050E C3         410            clr c
-050F E5C3       411            mov a, ADCRH
-0511 9470       412            subb a, #0x70
-0513 4003       413            jc ADC_to_PB_L2
-0515 C205       414            clr PB3
-0517 22         415            ret
-0518            416   
-0518            417            ; Check PB2
-0518            418   ADC_to_PB_L2:
-0518 C3         419            clr c
-0519 E5C3       420            mov a, ADCRH
-051B 9450       421            subb a, #0x50
-051D 4003       422            jc ADC_to_PB_L1
-051F C204       423            clr PB2
-0521 22         424            ret
-0522            425   
-0522            426            ; Check PB1
-0522            427   ADC_to_PB_L1:
-0522 C3         428            clr c
-0523 E5C3       429            mov a, ADCRH
-0525 9430       430            subb a, #0x30
-0527 4003       431            jc ADC_to_PB_L0
-0529 C203       432            clr PB1
-052B 22         433            ret
-052C            434   
-052C            435            ; Check PB0
-052C            436   ADC_to_PB_L0:
-052C C3         437            clr c
-052D E5C3       438            mov a, ADCRH
-052F 9410       439            subb a, #0x10
-0531 4003       440            jc ADC_to_PB_Done
-0533 C202       441            clr PB0
-0535 22         442            ret
-0536            443            
-0536            444   ADC_to_PB_Done:
-0536            445            ; No puhsbutton pressed         
-0536 22         446            ret
-0537            447   
-0537            448   ; MAIN 
-0537            449   main:
-0537 75817F     450            mov sp, #0x7f
-053A 12038A     451       lcall Init_All
-053D 12007E     452       lcall LCD_4BIT
-0540            453       ; initial messages in LCD
-0540 C0E0       454            push acc
-0542 7401       454            mov a, #1
-0544 14         454            dec a
-0545 1200BE     454            lcall ?Set_Cursor_1 ; Select column and row
-0548 D0E0       454            pop acc
-054A C083       455            push dph
-054C C082       455            push dpl
-054E C0E0       455            push acc
-0550 900003     455            mov dptr, #temperature_message
-0553 1200B1     455            lcall ?Send_Constant_String
-0556 D0E0       455            pop acc
-0558 D082       455            pop dpl
-055A D083       455            pop dph
-055C            456   
-055C 753B00     457            mov FSM1_state, #0
-055F 753432     458       mov Temp_soak, #50
-0562 75353C     459            mov Time_soak, #60
-0565 7536C8     460            mov Temp_refl, #200
-0568 75372D     461            mov Time_refl, #45
-056B 753800     462            mov sec, #0
-056E            463   
-056E C20A       464            clr start_stop_flag
-0570 C0E0       465            push acc
-0572 7410       465            mov a, #16
-0574 14         465            dec a
-0575 1200BC     465            lcall ?Set_Cursor_2 ; Select column and row
-0578 D0E0       465            pop acc
-057A C083       466            push dph
-057C C082       466            push dpl
-057E C0E0       466            push acc
-0580 900019     466            mov dptr, #state0
-0583 1200B1     466            lcall ?Send_Constant_String
-0586 D0E0       466            pop acc
-0588 D082       466            pop dpl
-058A D083       466            pop dph
-058C            467   
-058C            468   Forever:
-058C            469   
-058C            470   ; START/STOP BUTTON
-058C 200640     471            jb PB4, start_stop_done
-058F B20A       472            cpl start_stop_flag
-0591 200A10     473            jb start_stop_flag, turn_on_start
-0594            474            ; CONTROLLER IS OFF (STATE 0)
-0594 753B00     475            mov FSM1_state, #0
-0597 C0E0       476            push acc
-0599 7410       476            mov a, #16
-059B 14         476            dec a
-059C 1200BC     476            lcall ?Set_Cursor_2 ; Select column and row
-059F D0E0       476            pop acc
-05A1            477            ;Send_Constant_String(#state0)
-05A1 0205CF     478            ljmp start_stop_done
-05A4            479   
-05A4            480   ; CONTROLLER IS ON (STATE 1)
-05A4            481   turn_on_start:           
-05A4            482   
-05A4 C0E0       483            push acc
-05A6 7401       483            mov a, #1
-05A8 14         483            dec a
-05A9 1200BC     483            lcall ?Set_Cursor_2 ; Select column and row
-05AC D0E0       483            pop acc
-05AE C083       484            push dph
-05B0 C082       484            push dpl
-05B2 C0E0       484            push acc
-05B4 900014     484            mov dptr, #check_message
-05B7 1200B1     484            lcall ?Send_Constant_String
-05BA D0E0       484            pop acc
-05BC D082       484            pop dpl
-05BE D083       484            pop dph
-05C0            485   
-05C0 753B01     486            mov FSM1_state, #1
-05C3 C0E0       487            push acc
-05C5 7410       487            mov a, #16
-05C7 14         487            dec a
-05C8 1200BC     487            lcall ?Set_Cursor_2 ; Select column and row
-05CB D0E0       487            pop acc
-05CD            488            
-05CD 8000       489            sjmp start_stop_done    
-05CF            490            ;Send_Constant_String(#state1)
-05CF            491   
-05CF            492   start_stop_done: 
-05CF 853B99     493            mov SBUF, FSM1_state ; Load the value of FSM1_state into the serial buffer
-05D2 1204C9     494            lcall ADC_to_PB
-05D5            495            ;lcall Display_PushButtons_ADC
-05D5            496            
-05D5 75E807     497            mov ADCCON0, #0x07 ; Select channel 7 (P1.1)
-05D8 C2EF       498            clr ADCF
-05DA D2EE       499            setb ADCS ;  ADC start trigger signal
-05DC 30EFFD     500       jnb ADCF, $ ; Wait for conversion complete
-05DF            501       
-05DF            502       ; Read the ADC result and store in [R1, R0]
-05DF E5C3       503       mov a, ADCRH   
-05E1 C4         504       swap a
-05E2 C0E0       505       push acc
-05E4 540F       506       anl a, #0x0f
-05E6 F9         507       mov R1, a
-05E7 D0E0       508       pop acc
-05E9 54F0       509       anl a, #0xf0
-05EB 45C2       510       orl a, ADCRL
-05ED F8         511       mov R0, A
-05EE            512       
-05EE 75E801     513       mov ADCCON0, #0x01 ; Select channel 1 (P3.0)
-05F1 C2EF       514            clr ADCF
-05F3 D2EE       515            setb ADCS ;  ADC start trigger signal
-05F5 30EFFD     516       jnb ADCF, $ ; Wait for conversion complete
-05F8            517       
-05F8            518       ; Read the ADC result and store in [R4, R3]
-05F8 E5C3       519       mov a, ADCRH   
-05FA C4         520       swap a
-05FB C0E0       521       push acc
-05FD 540F       522       anl a, #0x0f
-05FF FC         523       mov R4, a
-0600 D0E0       524       pop acc
-0602 54F0       525       anl a, #0xf0
-0604 45C2       526       orl a, ADCRL
-0606 FB         527       mov R3, A
-0607            528       
-0607            529            ; Convert to LM335 temperature to voltage
-0607 8B30       530            mov x+0, R3
-0609 8C31       531            mov x+1, R4
-060B 753200     532            mov x+2, #0
-060E 753300     533            mov x+3, #0
-0611 75347C     534            mov y+0, #low (50300 % 0x10000) 
-0614 7535C4     534            mov y+1, #high(50300 % 0x10000) 
-0617 753600     534            mov y+2, #low (50300 / 0x10000) 
-061A 753700     534            mov y+3, #high(50300 / 0x10000)  ; VCC voltage measured
-061D 120253     535            lcall mul32
-0620 7534FF     536            mov y+0, #low (4095 % 0x10000) 
-0623 75350F     536            mov y+1, #high(4095 % 0x10000) 
-0626 753600     536            mov y+2, #low (4095 / 0x10000) 
-0629 753700     536            mov y+3, #high(4095 / 0x10000)  ; 2^12-1
-062C 1202E0     537            lcall div32
-062F 7534D0     538            mov y+0, #low (27600 % 0x10000) 
-0632 75356B     538            mov y+1, #high(27600 % 0x10000) 
-0635 753600     538            mov y+2, #low (27600 / 0x10000) 
-0638 753700     538            mov y+3, #high(27600 / 0x10000) 
-063B 1201BF     539            lcall sub32
-063E 753464     540            mov y+0, #low (100 % 0x10000) 
-0641 753500     540            mov y+1, #high(100 % 0x10000) 
-0644 753600     540            mov y+2, #low (100 / 0x10000) 
-0647 753700     540            mov y+3, #high(100 / 0x10000) 
-064A 120253     541            lcall mul32
-064D            542            
-064D            543            ; Convert to BCD and display
-064D 1200D9     544            lcall hex2bcd
-0650 C0E0       545            push acc
-0652 740C       545            mov a, #12
-0654 14         545            dec a
-0655 1200BE     545            lcall ?Set_Cursor_1 ; Select column and row
-0658 D0E0       545            pop acc
-065A 12036E     546            lcall Display_formated_BCD_Tj
-065D            547   
-065D            548            ; Convert value back to hex to use for calculations
-065D 120162     549            lcall bcd2hex
-0660            550   
-0660            551            ; Storing the ambient temperature
-0660 853038     552            mov amb_temp+0, x+0
-0663 853139     553            mov amb_temp+1, x+1
-0666 85323A     554            mov amb_temp+2, x+2
-0669 85333B     555            mov amb_temp+3, x+3
-066C            556   
-066C            557            ; Convert to thermocouple voltage to temperature
-066C 8830       558            mov x+0, R0
-066E 8931       559            mov x+1, R1
-0670 753200     560            mov x+2, #0
-0673 753300     561            mov x+3, #0
-0676 75347C     562            mov y+0, #low (50300 % 0x10000) 
-0679 7535C4     562            mov y+1, #high(50300 % 0x10000) 
-067C 753600     562            mov y+2, #low (50300 / 0x10000) 
-067F 753700     562            mov y+3, #high(50300 / 0x10000)  ; VCC voltage measured
-0682 120253     563            lcall mul32
-0685 7534FF     564            mov y+0, #low (4095 % 0x10000) 
-0688 75350F     564            mov y+1, #high(4095 % 0x10000) 
-068B 753600     564            mov y+2, #low (4095 / 0x10000) 
-068E 753700     564            mov y+3, #high(4095 / 0x10000)  ; 2^12-1
-0691 1202E0     565            lcall div32
-0694 753464     566            mov y+0, #low (100 % 0x10000) 
-0697 753500     566            mov y+1, #high(100 % 0x10000) 
-069A 753600     566            mov y+2, #low (100 / 0x10000) 
-069D 753700     566            mov y+3, #high(100 / 0x10000) 
-06A0 1202E0     567            lcall div32
-06A3 753445     568            mov y+0, #low (5189 % 0x10000) 
-06A6 753514     568            mov y+1, #high(5189 % 0x10000) 
-06A9 753600     568            mov y+2, #low (5189 / 0x10000) 
-06AC 753700     568            mov y+3, #high(5189 / 0x10000) 
-06AF 120253     569            lcall mul32
-06B2            570   
-06B2            571            ; Adding the ambient temperature to oven temperature
-06B2 853834     572            mov y+0, amb_temp+0
-06B5 853935     573            mov y+1, amb_temp+1
-06B8 853A36     574            mov y+2, amb_temp+2
-06BB 853B37     575            mov y+3, amb_temp+3
-06BE 12019E     576            lcall add32
-06C1            577            
-06C1            578            ; Convert to BCD and display
-06C1 1200D9     579            lcall hex2bcd
-06C4 C0E0       580            push acc
-06C6 7403       580            mov a, #3
-06C8 14         580            dec a
-06C9 1200BE     580            lcall ?Set_Cursor_1 ; Select column and row
-06CC D0E0       580            pop acc
-06CE 120349     581            lcall Display_formated_BCD_To
-06D1            582   
-06D1            583            ; Storing the thermocouple temperature into var temp 
-06D1 753410     584            mov y+0, #low (10000 % 0x10000) 
-06D4 753527     584            mov y+1, #high(10000 % 0x10000) 
-06D7 753600     584            mov y+2, #low (10000 / 0x10000) 
-06DA 753700     584            mov y+3, #high(10000 / 0x10000) 
-06DD 1202E0     585            lcall div32
-06E0 853039     586            mov temp+0, x+0
-06E3 85313A     587            mov temp+1, x+1
-06E6            588            
-06E6            589            ; Wait 100 ms between readings
-06E6 7A64       590            mov R2, #100
-06E8 1204C3     591            lcall waitms
-06EB 8000       592            sjmp FSM1
-06ED            593            
-06ED            594   ; STATE MACHINE  
-06ED            595   FSM1:
-06ED E53B       596            mov a, FSM1_state
-06EF            597   
-06EF            598   ; off state. Should go to state 1 when start button is pressed (Button 8 right now)
-06EF            599   FSM1_state0:
-06EF B40022     600            cjne a, #0, FSM1_state1
-06F2 753100     601            mov pwm, #0
-06F5 C0E0       602            push acc
-06F7 7410       602            mov a, #16
-06F9 14         602            dec a
-06FA 1200BC     602            lcall ?Set_Cursor_2 ; Select column and row
-06FD D0E0       602            pop acc
-06FF C083       603            push dph
-0701 C082       603            push dpl
-0703 C0E0       603            push acc
-0705 900019     603            mov dptr, #state0
-0708 1200B1     603            lcall ?Send_Constant_String
-070B D0E0       603            pop acc
-070D D082       603            pop dpl
-070F D083       603            pop dph
-0711            604            ;jb PB0, FSM1_state0_done
-0711            605            ;mov FSM1_state, #1
-0711            606   FSM1_state0_done:
-0711 02058C     607            ljmp Forever
-0714            608   
-0714            609   ; pre-heat state. Should go to state two when temp reaches temp_soak     
-0714            610   FSM1_state1:
-0714 B40134     611            cjne a, #1, FSM1_state2
-0717 C0E0       612            push acc
-0719 7410       612            mov a, #16
-071B 14         612            dec a
-071C 1200BC     612            lcall ?Set_Cursor_2 ; Select column and row
-071F D0E0       612            pop acc
-0721 C083       613            push dph
-0723 C082       613            push dpl
-0725 C0E0       613            push acc
-0727 90001B     613            mov dptr, #state1
-072A 1200B1     613            lcall ?Send_Constant_String
-072D D0E0       613            pop acc
-072F D082       613            pop dpl
-0731 D083       613            pop dph
-0733            614            
-0733 C296       615            clr P1.6
-0735            616            
-0735 753164     617            mov pwm, #100
-0738 753800     618            mov sec, #0
-073B            619            
-073B            620            ; These two lines are temporary. temp should be read from the thermocouple wire
-073B 753464     621            mov temp_soak, #100
-073E            622            
-073E E534       623            mov a, temp_soak
-0740 D3         624            setb c
-0741 9539       625            subb a, temp
-0743 5003       626            jnc FSM1_state1_done
-0745 753B02     627            mov FSM1_state, #2
-0748            628   FSM1_state1_done:
-0748 02058C     629            ljmp Forever
-074B            630   
-074B            631   ; State 2
-074B            632   FSM1_state2:
-074B D296       633            setb P1.6 ;speaker
-074D B4023A     634            cjne a, #2, FSM1_state3
-0750 C0E0       635            push acc
-0752 7410       635            mov a, #16
-0754 14         635            dec a
-0755 1200BC     635            lcall ?Set_Cursor_2 ; Select column and row
-0758 D0E0       635            pop acc
-075A C083       636            push dph
-075C C082       636            push dpl
-075E C0E0       636            push acc
-0760 90001D     636            mov dptr, #state2
-0763 1200B1     636            lcall ?Send_Constant_String
-0766 D0E0       636            pop acc
-0768 D082       636            pop dpl
-076A D083       636            pop dph
-076C 753114     637            mov pwm, #20
-076F            638            
-076F E538       639            mov a, sec
-0771 2401       640            add a, #1
-0773 F538       641            mov sec, a
-0775            642   
-0775 7A32       643            mov R2, #50
-0777 1204C3     644            lcall waitms
-077A            645   
-077A E535       646            mov a, Time_soak
-077C C3         647            clr c
-077D 9538       648            subb a, sec
-077F 5003       649            jnc FSM1_state2_done
-0781 753B03     650            mov FSM1_state, #3
-0784            651   FSM1_state2_done:
-0784 02058C     652            ljmp Forever
-0787            653   
-0787            654   ;DELETE
-0787            655   jump:
-0787 0206EF     656   ljmp FSM1_state0         
-078A            657   
-078A            658   ;State 3
-078A            659   FSM1_state3:
-078A B4032F     660            cjne a, #3, FSM1_state4
-078D C0E0       661            push acc
-078F 7410       661            mov a, #16
-0791 14         661            dec a
-0792 1200BC     661            lcall ?Set_Cursor_2 ; Select column and row
-0795 D0E0       661            pop acc
-0797 C083       662            push dph
-0799 C082       662            push dpl
-079B C0E0       662            push acc
-079D 90001F     662            mov dptr, #state3
-07A0 1200B1     662            lcall ?Send_Constant_String
-07A3 D0E0       662            pop acc
-07A5 D082       662            pop dpl
-07A7 D083       662            pop dph
-07A9 753164     663            mov pwm, #100
-07AC 753800     664            mov sec, #0
-07AF            665            
-07AF            666            
-07AF E536       667            mov a, Temp_refl
-07B1 C3         668            clr c
-07B2 9539       669            subb a, temp
-07B4 5003       670            jnc FSM1_state3_done
-07B6 753B04     671            mov FSM1_state, #4
-07B9            672   FSM1_state3_done:
-07B9 02058C     673            ljmp Forever
-07BC            674   
-07BC            675   
-07BC            676   ;State 4
-07BC            677   FSM1_state4:
-07BC B40437     678            cjne a, #4, FSM1_state5
-07BF C0E0       679            push acc
-07C1 7410       679            mov a, #16
-07C3 14         679            dec a
-07C4 1200BC     679            lcall ?Set_Cursor_2 ; Select column and row
-07C7 D0E0       679            pop acc
-07C9 C083       680            push dph
-07CB C082       680            push dpl
-07CD C0E0       680            push acc
-07CF 900021     680            mov dptr, #state4
-07D2 1200B1     680            lcall ?Send_Constant_String
-07D5 D0E0       680            pop acc
-07D7 D082       680            pop dpl
-07D9 D083       680            pop dph
-07DB 753114     681            mov pwm, #20
-07DE            682            
-07DE E538       683            mov a, sec
-07E0 2401       684            add a, #1
-07E2 F538       685            mov sec, a
-07E4            686   
-07E4 7A32       687            mov R2, #50
-07E6 1204C3     688            lcall waitms
-07E9            689            
-07E9 E537       690            mov a, Time_refl
-07EB C3         691            clr c
-07EC 9538       692            subb a,sec
-07EE 5003       693            jnc FSM1_state4_done
-07F0 753B05     694            mov FSM1_state, #5
-07F3            695   FSM1_state4_done:
-07F3 02058C     696            ljmp Forever
-07F6            697            
-07F6            698   FSM1_state5:
-07F6 B4058E     699            cjne a, #5, jump
-07F9 C0E0       700            push acc
-07FB 7410       700            mov a, #16
-07FD 14         700            dec a
-07FE 1200BC     700            lcall ?Set_Cursor_2 ; Select column and row
-0801 D0E0       700            pop acc
-0803 C083       701            push dph
-0805 C082       701            push dpl
-0807 C0E0       701            push acc
-0809 900023     701            mov dptr, #state5
-080C 1200B1     701            lcall ?Send_Constant_String
-080F D0E0       701            pop acc
-0811 D082       701            pop dpl
-0813 D083       701            pop dph
-0815 753100     702            mov pwm, #0
-0818            703            
-0818            704            
-0818 743C       705            mov a, #60
-081A C3         706            clr c
-081B 9539       707            subb a, temp
-081D 4003       708            jc FSM1_state5_done
-081F 753B00     709            mov FSM1_state,#0
-0822            710   FSM1_state5_done:
-0822 1203E3     711            lcall Save_Variables ; Save variables in flash memory
-0825 02058C     712            ljmp Forever
-0828            713            
-0828            714   
-0828            715   
-0828            716   ;Any additions to be checked
-0828            717   EN
+                118   $LIST
+0368            120   
+0368            121   ; Blank Macro
+                122   Left_blank mac
+                123   	mov a, %0
+                124   	anl a, #0xf0
+                125   	swap a
+                126   	jz Left_blank_%M_a
+                127   	ljmp %1
+                128   Left_blank_%M_a:
+                129   	Display_char(#' ')
+                130   	mov a, %0
+                131   	anl a, #0x0f
+                132   	jz Left_blank_%M_b
+                133   	ljmp %1
+                134   Left_blank_%M_b:
+                135   	Display_char(#' ')
+                136   endmac
+0368            137   
+0368            138   ; Formatting to display thermocouple temperature
+0368            139   ; Display: 0000.00
+0368            140   Display_formated_BCD_To:
+0368 C000       141            push ar0
+036A A83F       141            mov r0, bcd+3
+036C 1200E2     141            lcall ?Display_BCD
+036F D000       141            pop ar0
+0371 C000       142            push ar0
+0373 A83E       142            mov r0, bcd+2
+0375 1200E2     142            lcall ?Display_BCD
+0378 D000       142            pop ar0
+037A C0E0       143            push acc
+037C 742E       143            mov a, #'.'
+037E 120093     143            lcall ?WriteData
+0381 D0E0       143            pop acc
+0383 C000       144            push ar0
+0385 A83D       144            mov r0, bcd+1
+0387 1200E2     144            lcall ?Display_BCD
+038A D000       144            pop ar0
+038C            145   
+038C            146   
+038C 22         147            ret
+038D            148            
+038D            149   ; Formatting to display ambient temperature
+038D            150   ; Display: 00.00
+038D            151   Display_formated_BCD_Tj:
+038D C000       152            push ar0
+038F A83E       152            mov r0, bcd+2
+0391 1200E2     152            lcall ?Display_BCD
+0394 D000       152            pop ar0
+0396 C0E0       153            push acc
+0398 742E       153            mov a, #'.'
+039A 120093     153            lcall ?WriteData
+039D D0E0       153            pop acc
+039F C000       154            push ar0
+03A1 A83D       154            mov r0, bcd+1
+03A3 1200E2     154            lcall ?Display_BCD
+03A6 D000       154            pop ar0
+03A8 22         155            ret
+03A9            156   
+03A9            157   
+03A9            158   ; INITIALIZATION SUBROUTINES
+03A9            159   Init_All:
+03A9            160            ; Configure all the pins for biderectional I/O
+03A9 75AC00     161            mov     P3M1, #0x00
+03AC 75AD00     162            mov     P3M2, #0x00
+03AF 75B300     163            mov     P1M1, #0x00
+03B2 75B400     164            mov     P1M2, #0x00
+03B5 75B100     165            mov     P0M1, #0x00
+03B8 75B200     166            mov     P0M2, #0x00
+03BB            167   
+03BB 438E10     168            orl     CKCON, #0x10 ; CLK is the input for timer 1
+03BE 438780     169            orl     PCON, #0x80 ; Bit SMOD=1, double baud rate
+03C1 759852     170            mov     SCON, #0x52
+03C4 53C4DF     171            anl     T3CON, #0b11011111
+03C7 53890F     172            anl     TMOD, #0x0F ; Clear the configuration bits for timer 1
+03CA 438920     173            orl     TMOD, #0x20 ; Timer 1 Mode 2
+03CD 758DF7     174            mov     TH1, #TIMER1_RELOAD ; TH1=TIMER1_RELOAD;
+03D0 D28E       175            setb TR1
+03D2            176            
+03D2            177            ; Using timer 0 for delay functions.  Initialize here:
+03D2 C28C       178            clr     TR0 ; Stop timer 0
+03D4 438E08     179            orl     CKCON,#0x08 ; CLK is the input for timer 0
+03D7 5389F0     180            anl     TMOD,#0xF0 ; Clear the configuration bits for timer 0
+03DA 438901     181            orl     TMOD,#0x01 ; Timer 0 in Mode 1: 16-bit timer
+03DD            182            
+03DD            183            ; Initialize the pin used by the ADC (P1.1) as input.
+03DD 43B302     184            orl     P1M1, #0b00000010
+03E0 53B4FD     185            anl     P1M2, #0b11111101
+03E3            186   
+03E3            187            ; Initialize the pin used by the ADC (P3.0) as input.
+03E3 43AC01     188            orl     P3M1, #0b00000001
+03E6 53ADFE     189            anl     P3M2, #0b11111110
+03E9            190            
+03E9            191            ; Initialize and start the ADC:
+03E9 53E8F0     192            anl ADCCON0, #0xF0
+03EC 43E807     193            orl ADCCON0, #0x07 ; Select channel 7
+03EF            194   
+03EF 53E2F0     195            anl ADCCON2, #0xF0
+03F2 43E201     196            orl ADCCON2, #0x01 ; Select channel 1
+03F5            197   
+03F5            198            ; AINDIDS select if some pins are analog inputs or digital I/O:
+03F5 75F600     199            mov AINDIDS, #0x00 ; Disable all analog inputs
+03F8 43F680     200            orl AINDIDS, #0b10000000 ; P1.1 is analog input
+03FB 43F601     201            orl AINDIDS, #0b00000001 ; P3.0 is analog input
+03FE 43E101     202            orl ADCCON1, #0x01 ; Enable ADC
+0401            203            
+0401 22         204            ret
+0402            205   
+0402            206   ; Flash Memory Subroutines
+0402            207   ;******************************************************************************
+0402            208   ; This code illustrates how to use IAP to make APROM 3f80h as a byte of
+0402            209   ; Data Flash when user code is executed in APROM.
+0402            210   ; (The base of this code is listed in the N76E003 user manual)
+0402            211   ;******************************************************************************
+0402            212   
+0402            213   Save_Variables:
+0402 C2AF       214            CLR EA  ; MUST disable interrupts for this to work!
+0404            215            
+0404 75C7AA     216            MOV TA, #0aah ; CHPCON is TA protected
+0407 75C755     217            MOV TA, #55h
+040A 439F01     218            ORL CHPCON, #00000001b ; IAPEN = 1, enable IAP mode
+040D            219            
+040D 75C7AA     220            MOV TA, #0aah ; IAPUEN is TA protected
+0410 75C755     221            MOV TA, #55h
+0413 43A501     222            ORL IAPUEN, #00000001b ; APUEN = 1, enable APROM update
+0416            223            
+0416 75AF22     224            MOV IAPCN, #PAGE_ERASE_AP ; Erase page 3f80h~3f7Fh
+0419 75A73F     225            MOV IAPAH, #3fh ; Address high byte
+041C 75A680     226            MOV IAPAL, #80h ; Address low byte
+041F 75AEFF     227            MOV IAPFD, #0FFh ; Data to load into the address byte
+0422 75C7AA     228            MOV TA, #0aah ; IAPTRG is TA protected
+0425 75C755     229            MOV TA, #55h
+0428 43A401     230            ORL IAPTRG, #00000001b ; write ?1? to IAPGO to trigger IAP process
+042B            231            
+042B 75AF21     232            MOV IAPCN, #BYTE_PROGRAM_AP
+042E 75A73F     233            MOV IAPAH, #3fh
+0431            234            
+0431            235            ;Load 3f80h with temp_soak
+0431 75A680     236            MOV IAPAL, #80h
+0434 8543AE     237            MOV IAPFD, temp_soak
+0437 75C7AA     238            MOV TA, #0aah
+043A 75C755     239            MOV TA, #55h
+043D 43A401     240            ORL IAPTRG,#00000001b ; Basically, this executes the write to flash memory
+0440            241            
+0440            242            ;Load 3f81h with Time_soak
+0440 75A681     243            MOV IAPAL, #81h
+0443 8544AE     244            MOV IAPFD, Time_soak
+0446 75C7AA     245            MOV TA, #0aah
+0449 75C755     246            MOV TA, #55h
+044C 43A401     247            ORL IAPTRG,#00000001b
+044F            248            
+044F            249            ;Load 3f82h with Temp_refl
+044F 75A682     250            MOV IAPAL, #82h
+0452 8545AE     251            MOV IAPFD, Temp_refl
+0455 75C7AA     252            MOV TA, #0aah
+0458 75C755     253            MOV TA, #55h
+045B 43A401     254            ORL IAPTRG,#00000001b
+045E            255            
+045E            256            ;Load 3f83h with Time_refl
+045E 75A683     257            MOV IAPAL, #83h
+0461 8546AE     258            MOV IAPFD, Time_refl
+0464 75C7AA     259            MOV TA, #0aah
+0467 75C755     260            MOV TA, #55h
+046A 43A401     261            ORL IAPTRG,#00000001b
+046D            262   
+046D            263            ;Load 3f84h with 55h
+046D 75A684     264            MOV IAPAL,#84h
+0470 75AE55     265            MOV IAPFD, #55h
+0473 75C7AA     266            MOV TA, #0aah
+0476 75C755     267            MOV TA, #55h
+0479 43A401     268            ORL IAPTRG, #00000001b
+047C            269   
+047C            270            ;Load 3f85h with aah (spacer value indicating EOF, will load if something funny happens)
+047C 75A685     271            MOV IAPAL, #85h
+047F 75AEAA     272            MOV IAPFD, #0aah
+0482 75C7AA     273            MOV TA, #0aah
+0485 75C755     274            MOV TA, #55h
+0488 43A401     275            ORL IAPTRG, #00000001b
+048B            276   
+048B 75C7AA     277            MOV TA, #0aah
+048E 75C755     278            MOV TA, #55h
+0491 53A5FE     279            ANL IAPUEN, #11111110b ; APUEN = 0, disable APROM update
+0494 75C7AA     280            MOV TA, #0aah
+0497 75C755     281            MOV TA, #55h
+049A 539FFE     282            ANL CHPCON, #11111110b ; IAPEN = 0, disable IAP mode
+049D            283            
+049D D2AF       284            setb EA  ; Re-enable interrupts
+049F            285   
+049F 22         286            ret
+04A0            287   
+04A0            288   Load_Variables:
+04A0 903F84     289            mov dptr, #0x3f84  ; First key value location.  Must be 0x55
+04A3 E4         290            clr a
+04A4 93         291            movc a, @a+dptr
+04A5 B4551D     292            cjne a, #0x55, Load_Defaults
+04A8 A3         293            inc dptr      ; Second key value location.  Must be 0xaa
+04A9 E4         294            clr a
+04AA 93         295            movc a, @a+dptr
+04AB B4AA17     296            cjne a, #0xaa, Load_Defaults
+04AE            297            
+04AE 903F80     298            mov dptr, #0x3f80
+04B1 E4         299            clr a
+04B2 93         300            movc a, @a+dptr
+04B3 F543       301            mov temp_soak, a
+04B5            302            
+04B5 A3         303            inc dptr
+04B6 E4         304            clr a
+04B7 93         305            movc a, @a+dptr
+04B8 F544       306            mov Time_soak, a
+04BA            307            
+04BA A3         308            inc dptr
+04BB E4         309            clr a
+04BC 93         310            movc a, @a+dptr
+04BD F545       311            mov Temp_refl, a
+04BF            312            
+04BF A3         313            inc dptr
+04C0 E4         314            clr a
+04C1 93         315            movc a, @a+dptr
+04C2 F546       316            mov Time_refl, a
+04C4 22         317            ret
+04C5            318   
+04C5            319   Load_Defaults:
+04C5 754301     320            mov temp_soak, #1
+04C8 754402     321            mov Time_soak, #2
+04CB 754503     322            mov Temp_refl, #3
+04CE 754604     323            mov Time_refl, #4
+04D1 22         324            ret
+04D2            325   
+04D2            326   wait_1ms:
+04D2 C28C       327            clr     TR0 ; Stop timer 0
+04D4 C28D       328            clr     TF0 ; Clear overflow flag
+04D6 758CBF     329            mov     TH0, #high(TIMER0_RELOAD_1MS)
+04D9 758A28     330            mov     TL0,#low(TIMER0_RELOAD_1MS)
+04DC D28C       331            setb TR0
+04DE 308DFD     332            jnb     TF0, $ ; Wait for overflow
+04E1 22         333            ret
+04E2            334   
+04E2            335   ; Wait the number of miliseconds in R2
+04E2            336   waitms:
+04E2 1204D2     337            lcall wait_1ms
+04E5 DAFB       338            djnz R2, waitms
+04E7 22         339            ret
+04E8            340   
+04E8            341   ADC_to_PB:
+04E8 53E8F0     342            anl ADCCON0, #0xF0
+04EB 43E800     343            orl ADCCON0, #0x00 ; Select AIN0
+04EE            344            
+04EE C2EF       345            clr ADCF
+04F0 D2EE       346            setb ADCS   ; ADC start trigger signal
+04F2 30EFFD     347       jnb ADCF, $ ; Wait for conversion complete
+04F5            348   
+04F5 D208       349            setb PB7
+04F7 D207       350            setb PB6
+04F9 D206       351            setb PB5
+04FB D205       352            setb PB4
+04FD D204       353            setb PB3
+04FF D203       354            setb PB2
+0501 D202       355            setb PB1
+0503 D201       356            setb PB0
+0505            357            
+0505            358            ; Check PB7
+0505            359   ADC_to_PB_L7:
+0505 C3         360            clr c
+0506 E5C3       361            mov a, ADCRH
+0508 94F0       362            subb a, #0xf0
+050A 4003       363            jc ADC_to_PB_L6
+050C C208       364            clr PB7
+050E 22         365            ret
+050F            366   
+050F            367            ; Check PB6
+050F            368   ADC_to_PB_L6:
+050F C3         369            clr c
+0510 E5C3       370            mov a, ADCRH
+0512 94D0       371            subb a, #0xd0
+0514 4003       372            jc ADC_to_PB_L5
+0516 C207       373            clr PB6
+0518 22         374            ret
+0519            375   
+0519            376            ; Check PB5
+0519            377   ADC_to_PB_L5:
+0519 C3         378            clr c
+051A E5C3       379            mov a, ADCRH
+051C 94B0       380            subb a, #0xb0
+051E 4003       381            jc ADC_to_PB_L4
+0520 C206       382            clr PB5
+0522 22         383            ret
+0523            384   
+0523            385            ; Check PB4
+0523            386   ADC_to_PB_L4:
+0523 C3         387            clr c
+0524 E5C3       388            mov a, ADCRH
+0526 9490       389            subb a, #0x90
+0528 4003       390            jc ADC_to_PB_L3
+052A C205       391            clr PB4
+052C 22         392            ret
+052D            393   
+052D            394            ; Check PB3
+052D            395   ADC_to_PB_L3:
+052D C3         396            clr c
+052E E5C3       397            mov a, ADCRH
+0530 9470       398            subb a, #0x70
+0532 4003       399            jc ADC_to_PB_L2
+0534 C204       400            clr PB3
+0536 22         401            ret
+0537            402   
+0537            403            ; Check PB2
+0537            404   ADC_to_PB_L2:
+0537 C3         405            clr c
+0538 E5C3       406            mov a, ADCRH
+053A 9450       407            subb a, #0x50
+053C 4003       408            jc ADC_to_PB_L1
+053E C203       409            clr PB2
+0540 22         410            ret
+0541            411   
+0541            412            ; Check PB1
+0541            413   ADC_to_PB_L1:
+0541 C3         414            clr c
+0542 E5C3       415            mov a, ADCRH
+0544 9430       416            subb a, #0x30
+0546 4003       417            jc ADC_to_PB_L0
+0548 C202       418            clr PB1
+054A 22         419            ret
+054B            420   
+054B            421            ; Check PB0
+054B            422   ADC_to_PB_L0:
+054B C3         423            clr c
+054C E5C3       424            mov a, ADCRH
+054E 9410       425            subb a, #0x10
+0550 4003       426            jc ADC_to_PB_Done
+0552 C201       427            clr PB0
+0554 22         428            ret
+0555            429            
+0555            430   ADC_to_PB_Done:
+0555            431            ; No puhsbutton pressed         
+0555 22         432            ret
+0556            433   
+0556            434   ; MAIN 
+0556            435   main:
+0556 75817F     436            mov sp, #0x7f
+0559 1203A9     437       lcall Init_All
+055C 12009D     438       lcall LCD_4BIT
+055F            439       ; initial messages in LCD
+055F C0E0       440            push acc
+0561 7401       440            mov a, #1
+0563 14         440            dec a
+0564 1200DD     440            lcall ?Set_Cursor_1 ; Select column and row
+0567 D0E0       440            pop acc
+0569 C083       441            push dph
+056B C082       441            push dpl
+056D C0E0       441            push acc
+056F 900003     441            mov dptr, #temperature_message
+0572 1200D0     441            lcall ?Send_Constant_String
+0575 D0E0       441            pop acc
+0577 D082       441            pop dpl
+0579 D083       441            pop dph
+057B            442   
+057B 754A00     443            mov FSM1_state, #0
+057E 754332     444       mov Temp_soak, #50
+0581 75443C     445            mov Time_soak, #60
+0584 7545C8     446            mov Temp_refl, #200
+0587 75462D     447            mov Time_refl, #45
+058A 754700     448            mov sec, #0
+058D            449   
+058D            450   Forever:
+058D 20050F     451            jb PB4, continue
+0590            452   
+0590            453   turn_on:
+0590 E54A       454            mov a, FSM1_state
+0592 B40005     455            cjne a, #0, turn_off
+0595 754A01     456            mov FSM1_state, #1
+0598 8005       457            sjmp continue
+059A            458   
+059A            459   turn_off:
+059A 754A00     460            mov FSM1_state, #0
+059D 8000       461            sjmp continue
+059F            462   
+059F            463   continue:
+059F 1204E8     464            lcall ADC_to_PB
+05A2            465            ;lcall Display_PushButtons_ADC
+05A2            466            
+05A2 75E807     467            mov ADCCON0, #0x07 ; Select channel 7 (P1.1)
+05A5 C2EF       468            clr ADCF
+05A7 D2EE       469            setb ADCS ;  ADC start trigger signal
+05A9 30EFFD     470       jnb ADCF, $ ; Wait for conversion complete
+05AC            471       
+05AC            472       ; Read the ADC result and store in [R1, R0]
+05AC E5C3       473       mov a, ADCRH   
+05AE C4         474       swap a
+05AF C0E0       475       push acc
+05B1 540F       476       anl a, #0x0f
+05B3 F9         477       mov R1, a
+05B4 D0E0       478       pop acc
+05B6 54F0       479       anl a, #0xf0
+05B8 45C2       480       orl a, ADCRL
+05BA F8         481       mov R0, A
+05BB            482       
+05BB 75E801     483       mov ADCCON0, #0x01 ; Select channel 1 (P3.0)
+05BE C2EF       484            clr ADCF
+05C0 D2EE       485            setb ADCS ;  ADC start trigger signal
+05C2 30EFFD     486       jnb ADCF, $ ; Wait for conversion complete
+05C5            487       
+05C5            488       ; Read the ADC result and store in [R4, R3]
+05C5 E5C3       489       mov a, ADCRH   
+05C7 C4         490       swap a
+05C8 C0E0       491       push acc
+05CA 540F       492       anl a, #0x0f
+05CC FC         493       mov R4, a
+05CD D0E0       494       pop acc
+05CF 54F0       495       anl a, #0xf0
+05D1 45C2       496       orl a, ADCRL
+05D3 FB         497       mov R3, A
+05D4            498       
+05D4            499            ; Convert to LM335 temperature to voltage
+05D4 8B30       500            mov x+0, R3
+05D6 8C31       501            mov x+1, R4
+05D8 753200     502            mov x+2, #0
+05DB 753300     503            mov x+3, #0
+05DE 75347C     504            mov y+0, #low (50300 % 0x10000) 
+05E1 7535C4     504            mov y+1, #high(50300 % 0x10000) 
+05E4 753600     504            mov y+2, #low (50300 / 0x10000) 
+05E7 753700     504            mov y+3, #high(50300 / 0x10000)  ; VCC voltage measured
+05EA 120272     505            lcall mul32
+05ED 7534FF     506            mov y+0, #low (4095 % 0x10000) 
+05F0 75350F     506            mov y+1, #high(4095 % 0x10000) 
+05F3 753600     506            mov y+2, #low (4095 / 0x10000) 
+05F6 753700     506            mov y+3, #high(4095 / 0x10000)  ; 2^12-1
+05F9 1202FF     507            lcall div32
+05FC 7534D0     508            mov y+0, #low (27600 % 0x10000) 
+05FF 75356B     508            mov y+1, #high(27600 % 0x10000) 
+0602 753600     508            mov y+2, #low (27600 / 0x10000) 
+0605 753700     508            mov y+3, #high(27600 / 0x10000) 
+0608 1201DE     509            lcall sub32
+060B 753464     510            mov y+0, #low (100 % 0x10000) 
+060E 753500     510            mov y+1, #high(100 % 0x10000) 
+0611 753600     510            mov y+2, #low (100 / 0x10000) 
+0614 753700     510            mov y+3, #high(100 / 0x10000) 
+0617 120272     511            lcall mul32
+061A            512            
+061A            513            ; Convert to BCD and display
+061A 1200F8     514            lcall hex2bcd
+061D C0E0       515            push acc
+061F 740C       515            mov a, #12
+0621 14         515            dec a
+0622 1200DD     515            lcall ?Set_Cursor_1 ; Select column and row
+0625 D0E0       515            pop acc
+0627 12038D     516            lcall Display_formated_BCD_Tj
+062A            517   
+062A            518            ; Convert value back to hex to use for calculations
+062A 120181     519            lcall bcd2hex
+062D            520   
+062D            521            ; Storing the ambient temperature
+062D 853038     522            mov amb_temp+0, x+0
+0630 853139     523            mov amb_temp+1, x+1
+0633 85323A     524            mov amb_temp+2, x+2
+0636 85333B     525            mov amb_temp+3, x+3
+0639            526   
+0639            527            ; Convert to thermocouple voltage to temperature
+0639 8830       528            mov x+0, R0
+063B 8931       529            mov x+1, R1
+063D 753200     530            mov x+2, #0
+0640 753300     531            mov x+3, #0
+0643 75347C     532            mov y+0, #low (50300 % 0x10000) 
+0646 7535C4     532            mov y+1, #high(50300 % 0x10000) 
+0649 753600     532            mov y+2, #low (50300 / 0x10000) 
+064C 753700     532            mov y+3, #high(50300 / 0x10000)  ; VCC voltage measured
+064F 120272     533            lcall mul32
+0652 7534FF     534            mov y+0, #low (4095 % 0x10000) 
+0655 75350F     534            mov y+1, #high(4095 % 0x10000) 
+0658 753600     534            mov y+2, #low (4095 / 0x10000) 
+065B 753700     534            mov y+3, #high(4095 / 0x10000)  ; 2^12-1
+065E 1202FF     535            lcall div32
+0661 753464     536            mov y+0, #low (100 % 0x10000) 
+0664 753500     536            mov y+1, #high(100 % 0x10000) 
+0667 753600     536            mov y+2, #low (100 / 0x10000) 
+066A 753700     536            mov y+3, #high(100 / 0x10000) 
+066D 1202FF     537            lcall div32
+0670 753445     538            mov y+0, #low (5189 % 0x10000) 
+0673 753514     538            mov y+1, #high(5189 % 0x10000) 
+0676 753600     538            mov y+2, #low (5189 / 0x10000) 
+0679 753700     538            mov y+3, #high(5189 / 0x10000) 
+067C 120272     539            lcall mul32
+067F            540   
+067F            541            ; Adding the ambient temperature to oven temperature
+067F 853834     542            mov y+0, amb_temp+0
+0682 853935     543            mov y+1, amb_temp+1
+0685 853A36     544            mov y+2, amb_temp+2
+0688 853B37     545            mov y+3, amb_temp+3
+068B 1201BD     546            lcall add32
+068E            547            
+068E            548            ; Convert to BCD and display
+068E 1200F8     549            lcall hex2bcd
+0691 C0E0       550            push acc
+0693 7403       550            mov a, #3
+0695 14         550            dec a
+0696 1200DD     550            lcall ?Set_Cursor_1 ; Select column and row
+0699 D0E0       550            pop acc
+069B 120368     551            lcall Display_formated_BCD_To
+069E            552   
+069E            553            ; Storing the thermocouple temperature into var temp 
+069E 753410     554            mov y+0, #low (10000 % 0x10000) 
+06A1 753527     554            mov y+1, #high(10000 % 0x10000) 
+06A4 753600     554            mov y+2, #low (10000 / 0x10000) 
+06A7 753700     554            mov y+3, #high(10000 / 0x10000) 
+06AA 1202FF     555            lcall div32
+06AD 853048     556            mov temp+0, x+0
+06B0 853149     557            mov temp+1, x+1
+06B3            558            
+06B3            559            ; Wait 100 ms between readings
+06B3 7A64       560            mov R2, #100
+06B5 1204E2     561            lcall waitms
+06B8            562            
+06B8            563   ; STATE MACHINE  
+06B8            564   FSM1:
+06B8 E54A       565            mov a, FSM1_state
+06BA            566   
+06BA            567   ; off state. Should go to state 1 when start button is pressed (Button 8 right now)
+06BA            568   FSM1_state0:
+06BA B40022     569            cjne a, #0, FSM1_state1
+06BD C0E0       570            push acc
+06BF 7410       570            mov a, #16
+06C1 14         570            dec a
+06C2 1200DB     570            lcall ?Set_Cursor_2 ; Select column and row
+06C5 D0E0       570            pop acc
+06C7 C083       571            push dph
+06C9 C082       571            push dpl
+06CB C0E0       571            push acc
+06CD 900014     571            mov dptr, #state0
+06D0 1200D0     571            lcall ?Send_Constant_String
+06D3 D0E0       571            pop acc
+06D5 D082       571            pop dpl
+06D7 D083       571            pop dph
+06D9 754100     572            mov pwm, #0
+06DC            573            ;jb PB4, FSM1_state0_done
+06DC            574            ;mov FSM1_state, #1
+06DC            575   FSM1_state0_done:
+06DC 02058D     576            ljmp Forever
+06DF            577   
+06DF            578   ; pre-heat state. Should go to state two when temp reaches temp_soak     
+06DF            579   FSM1_state1:
+06DF B40134     580            cjne a, #1, FSM1_state2
+06E2 C0E0       581            push acc
+06E4 7405       581            mov a, #5
+06E6 14         581            dec a
+06E7 1200DB     581            lcall ?Set_Cursor_2 ; Select column and row
+06EA D0E0       581            pop acc
+06EC C083       582            push dph
+06EE C082       582            push dpl
+06F0 C0E0       582            push acc
+06F2 90001C     582            mov dptr, #state1
+06F5 1200D0     582            lcall ?Send_Constant_String
+06F8 D0E0       582            pop acc
+06FA D082       582            pop dpl
+06FC D083       582            pop dph
+06FE            583            
+06FE C296       584            clr P1.6
+0700            585            
+0700 754164     586            mov pwm, #100
+0703 754700     587            mov sec, #0
+0706            588            
+0706            589            ; These two lines are temporary. temp should be read from the thermocouple wire
+0706 754364     590            mov temp_soak, #100
+0709            591            
+0709 E543       592            mov a, temp_soak
+070B D3         593            setb c
+070C 9548       594            subb a, temp
+070E 5003       595            jnc FSM1_state1_done
+0710 754A02     596            mov FSM1_state, #2
+0713            597   FSM1_state1_done:
+0713            598            
+0713 02058D     599            ljmp Forever
+0716            600   
+0716            601   ; State 2
+0716            602   FSM1_state2:
+0716 D296       603            setb P1.6 ;speaker
+0718 B4023A     604            cjne a, #2, FSM1_state3
+071B C0E0       605            push acc
+071D 7405       605            mov a, #5
+071F 14         605            dec a
+0720 1200DB     605            lcall ?Set_Cursor_2 ; Select column and row
+0723 D0E0       605            pop acc
+0725 C083       606            push dph
+0727 C082       606            push dpl
+0729 C0E0       606            push acc
+072B 900024     606            mov dptr, #state2
+072E 1200D0     606            lcall ?Send_Constant_String
+0731 D0E0       606            pop acc
+0733 D082       606            pop dpl
+0735 D083       606            pop dph
+0737 754114     607            mov pwm, #20
+073A            608            
+073A E547       609            mov a, sec
+073C 2401       610            add a, #1
+073E F547       611            mov sec, a
+0740            612   
+0740 7A32       613            mov R2, #50
+0742 1204E2     614            lcall waitms
+0745            615   
+0745 E544       616            mov a, Time_soak
+0747 C3         617            clr c
+0748 9547       618            subb a, sec
+074A 5003       619            jnc FSM1_state2_done
+074C 754A03     620            mov FSM1_state, #3
+074F            621   FSM1_state2_done:
+074F 02058D     622            ljmp Forever
+0752            623   
+0752            624   ;DELETE
+0752            625   jump:
+0752 0206BA     626   ljmp FSM1_state0         
+0755            627   
+0755            628   ;State 3
+0755            629   FSM1_state3:
+0755 B4032F     630            cjne a, #3, FSM1_state4
+0758 C0E0       631            push acc
+075A 7405       631            mov a, #5
+075C 14         631            dec a
+075D 1200DB     631            lcall ?Set_Cursor_2 ; Select column and row
+0760 D0E0       631            pop acc
+0762 C083       632            push dph
+0764 C082       632            push dpl
+0766 C0E0       632            push acc
+0768 90002C     632            mov dptr, #state3
+076B 1200D0     632            lcall ?Send_Constant_String
+076E D0E0       632            pop acc
+0770 D082       632            pop dpl
+0772 D083       632            pop dph
+0774 754164     633            mov pwm, #100
+0777 754700     634            mov sec, #0
+077A            635            
+077A            636            
+077A E545       637            mov a, Temp_refl
+077C C3         638            clr c
+077D 9548       639            subb a, temp
+077F 5003       640            jnc FSM1_state3_done
+0781 754A04     641            mov FSM1_state, #4
+0784            642   FSM1_state3_done:
+0784 02058D     643            ljmp Forever
+0787            644   
+0787            645   
+0787            646   ;State 4
+0787            647   FSM1_state4:
+0787 B40437     648            cjne a, #4, FSM1_state5
+078A C0E0       649            push acc
+078C 7405       649            mov a, #5
+078E 14         649            dec a
+078F 1200DB     649            lcall ?Set_Cursor_2 ; Select column and row
+0792 D0E0       649            pop acc
+0794 C083       650            push dph
+0796 C082       650            push dpl
+0798 C0E0       650            push acc
+079A 900034     650            mov dptr, #state4
+079D 1200D0     650            lcall ?Send_Constant_String
+07A0 D0E0       650            pop acc
+07A2 D082       650            pop dpl
+07A4 D083       650            pop dph
+07A6 754114     651            mov pwm, #20
+07A9            652            
+07A9 E547       653            mov a, sec
+07AB 2401       654            add a, #1
+07AD F547       655            mov sec, a
+07AF            656   
+07AF 7A32       657            mov R2, #50
+07B1 1204E2     658            lcall waitms
+07B4            659            
+07B4 E546       660            mov a, Time_refl
+07B6 C3         661            clr c
+07B7 9547       662            subb a,sec
+07B9 5003       663            jnc FSM1_state4_done
+07BB 754A05     664            mov FSM1_state, #5
+07BE            665   FSM1_state4_done:
+07BE 02058D     666            ljmp Forever
+07C1            667            
+07C1            668   FSM1_state5:
+07C1 B4058E     669            cjne a, #5, jump
+07C4 C0E0       670            push acc
+07C6 7405       670            mov a, #5
+07C8 14         670            dec a
+07C9 1200DB     670            lcall ?Set_Cursor_2 ; Select column and row
+07CC D0E0       670            pop acc
+07CE C083       671            push dph
+07D0 C082       671            push dpl
+07D2 C0E0       671            push acc
+07D4 90003C     671            mov dptr, #state5
+07D7 1200D0     671            lcall ?Send_Constant_String
+07DA D0E0       671            pop acc
+07DC D082       671            pop dpl
+07DE D083       671            pop dph
+07E0 754100     672            mov pwm, #0
+07E3            673            
+07E3            674            
+07E3 743C       675            mov a, #60
+07E5 C3         676            clr c
+07E6 9548       677            subb a, temp
+07E8 4003       678            jc FSM1_state5_done
+07EA 754A00     679            mov FSM1_state,#0
+07ED            680   FSM1_state5_done:
+07ED 120402     681            lcall Save_Variables ; Save variables in flash memory
+07F0 02058D     682            ljmp Forever
+07F3            683            
+07F3            684   
+07F3            685   
+07F3            686   ;Any additions to be checked
+07F3            687   EN

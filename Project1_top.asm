@@ -449,9 +449,28 @@ main:
 
 Forever:
 	jb PB6, increase
+
+; Example branch for decreasing any given value 
+; This set of code will increase the ones columnn of any given 
+; variable. ie. reflow_temp_ones, reflow_time_ones
+; the 10s and 100s column will update in response to increasing 
+; the ones column beyond 9.
+
+; will use the same logic for the other pushbuttons
+; This example will use temp_soak for this example
 decrease:
+	jb PB5, continue1
+	mov a, Temp_refl
+    subb a, #1
+	da a
+    mov Temp_refl, a
 	ljmp continue1
 increase:
+	jb PB5, continue1
+	mov a, Temp_refl
+	add a, #1
+	da a 
+	mov Temp_refl, a
 	ljmp continue1
 
 continue1:

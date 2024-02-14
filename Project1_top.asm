@@ -43,12 +43,12 @@ ORG 0x0000
 ; Initialization Messages
 temperature_message:     db 'O=       J=     ', 0
 
-state0:	   db 'State 0', 0
-state1:	   db 'State 1', 0
-state2:	   db 'State 2', 0
-state3:	   db 'State 3', 0
-state4:	   db 'State 4', 0
-state5:	   db 'State 5', 0
+state0:	   db '0', 0
+state1:	   db '1', 0
+state2:	   db '2', 0
+state3:	   db '3', 0
+state4:	   db '4', 0
+state5:	   db '5', 0
 
 cseg
 
@@ -567,7 +567,7 @@ FSM1:
 ; off state. Should go to state 1 when start button is pressed (Button 8 right now)
 FSM1_state0:
 	cjne a, #0, FSM1_state1
-	Set_Cursor(2, 5)
+	Set_Cursor(2, 16)
 	Send_Constant_String(#state0)
 	mov pwm, #0
 	;jb PB4, FSM1_state0_done
@@ -578,7 +578,7 @@ FSM1_state0_done:
 ; pre-heat state. Should go to state two when temp reaches temp_soak	
 FSM1_state1:
 	cjne a, #1, FSM1_state2
-	Set_Cursor(2, 5)
+	Set_Cursor(2, 16)
 	Send_Constant_String(#state1)
 	
 	clr P1.6
@@ -601,7 +601,7 @@ FSM1_state1_done:
 FSM1_state2:
 	setb P1.6 ;speaker
 	cjne a, #2, FSM1_state3
-	Set_Cursor(2, 5)
+	Set_Cursor(2, 16)
 	Send_Constant_String(#state2)
 	mov pwm, #20
 	
@@ -627,7 +627,7 @@ ljmp FSM1_state0
 ;State 3
 FSM1_state3:
 	cjne a, #3, FSM1_state4
-	Set_Cursor(2, 5)
+	Set_Cursor(2, 16)
 	Send_Constant_String(#state3)
 	mov pwm, #100
 	mov sec, #0
@@ -645,7 +645,7 @@ FSM1_state3_done:
 ;State 4
 FSM1_state4:
 	cjne a, #4, FSM1_state5
-	Set_Cursor(2, 5)
+	Set_Cursor(2, 16)
 	Send_Constant_String(#state4)
 	mov pwm, #20
 	
@@ -666,7 +666,7 @@ FSM1_state4_done:
 	
 FSM1_state5:
 	cjne a, #5, jump
-	Set_Cursor(2, 5)
+	Set_Cursor(2, 16)
 	Send_Constant_String(#state5)
 	mov pwm, #0
 	

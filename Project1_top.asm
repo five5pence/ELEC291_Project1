@@ -729,7 +729,7 @@ continue:
 	lcall mul32
 	Load_y(4095) ; 2^12-1
 	lcall div32
-	Load_y(27600)
+	Load_y(27400)
 	lcall sub32
 	Load_y(100)
 	lcall mul32
@@ -863,6 +863,12 @@ FSM1_state1:
 	mov pwm, #100
 	
 	;Failsafe. Returns to state 0 if temperature is not reached in 6 seconds (should be 60 idk how to do it)
+	; NEW CODE
+	mov a, #50
+	clr c
+	subb a, temp
+	jc FSM1_state1_continue
+
 	mov a, sec
 	add a, #1
 	mov sec, a

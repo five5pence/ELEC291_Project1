@@ -827,10 +827,10 @@
 0783 753600     730            mov y+2, #low (4095 / 0x10000) 
 0786 753700     730            mov y+3, #high(4095 / 0x10000)  ; 2^12-1
 0789 12030C     731            lcall div32
-078C 7534D0     732            mov y+0, #low (27600 % 0x10000) 
-078F 75356B     732            mov y+1, #high(27600 % 0x10000) 
-0792 753600     732            mov y+2, #low (27600 / 0x10000) 
-0795 753700     732            mov y+3, #high(27600 / 0x10000) 
+078C 753408     732            mov y+0, #low (27400 % 0x10000) 
+078F 75356B     732            mov y+1, #high(27400 % 0x10000) 
+0792 753600     732            mov y+2, #low (27400 / 0x10000) 
+0795 753700     732            mov y+3, #high(27400 / 0x10000) 
 0798 1201EB     733            lcall sub32
 079B 753464     734            mov y+0, #low (100 % 0x10000) 
 079E 753500     734            mov y+1, #high(100 % 0x10000) 
@@ -992,7 +992,7 @@
 08AF            854   
 08AF            855   ; pre-heat state. Should go to state two when temp reaches Temp_soak     
 08AF            856   FSM1_state1:
-08AF B40154     857            cjne a, #1, FSM1_state2
+08AF B4015B     857            cjne a, #1, FSM1_state2
 08B2 C0E0       858            push acc
 08B4 7410       858            mov a, #16
 08B6 14         858            dec a
@@ -1012,183 +1012,189 @@
 08D0 754164     863            mov pwm, #100
 08D3            864            
 08D3            865            ;Failsafe. Returns to state 0 if temperature is not reached in 6 seconds (should be 60 idk how to do it)
-08D3 E547       866            mov a, sec
-08D5 2401       867            add a, #1
-08D7 F547       868            mov sec, a
-08D9            869   
-08D9 743C       870            mov a, #60
-08DB C3         871            clr c
-08DC 9547       872            subb a, sec
-08DE 5016       873            jnc FSM1_state1_continue
-08E0            874   
-08E0 E548       875            mov a, loop_ten_times
-08E2 2401       876            add a, #1
-08E4 F548       877            mov loop_ten_times, a 
-08E6 754700     878            mov sec, #0
-08E9 7408       879            mov a, #8
-08EB C3         880            clr c 
-08EC 9548       881            subb a, loop_ten_times
-08EE 5006       882            jnc FSM1_state1_continue
-08F0            883   
-08F0 754B00     884            mov FSM1_state, #0
-08F3 02067A     885            ljmp Forever
-08F6            886   
-08F6            887   FSM1_state1_continue:
-08F6            888            ; These two lines are temporary. temp should be read from the thermocouple wire
-08F6            889            ;mov Temp_soak, #100
-08F6            890            
-08F6 E543       891            mov a, Temp_soak
-08F8 D3         892            setb c
-08F9 9549       893            subb a, temp
-08FB 5006       894            jnc FSM1_state1_done
-08FD 754800     895            mov loop_ten_times, #0
-0900 754B02     896            mov FSM1_state, #2
-0903            897   FSM1_state1_done:
-0903 02067A     898            ljmp Forever
-0906            899   
-0906            900   ; State 2
-0906            901   FSM1_state2:
-0906 D296       902            setb P1.6 ;speaker
-0908 B40245     903            cjne a, #2, FSM1_state3
-090B C0E0       904            push acc
-090D 7410       904            mov a, #16
-090F 14         904            dec a
-0910 1200E8     904            lcall ?Set_Cursor_2 ; Select column and row
-0913 D0E0       904            pop acc
-0915 C083       905            push dph
-0917 C082       905            push dpl
-0919 C0E0       905            push acc
-091B 900049     905            mov dptr, #state2
-091E 1200DD     905            lcall ?Send_Constant_String
-0921 D0E0       905            pop acc
-0923 D082       905            pop dpl
-0925 D083       905            pop dph
-0927 754114     906            mov pwm, #20
-092A            907            
-092A E547       908            mov a, sec
-092C 2401       909            add a, #1
-092E F547       910            mov sec, a
-0930            911   
-0930 E544       912            mov a, Time_soak
-0932 C3         913            clr c
-0933 9547       914            subb a, sec
-0935 5013       915            jnc FSM1_state2_done
-0937            916   
-0937 E548       917            mov a, loop_ten_times
-0939 2401       918            add a, #1
-093B F548       919            mov loop_ten_times, a 
-093D 754700     920            mov sec, #0
-0940 7405       921            mov a, #5
-0942 C3         922            clr c 
-0943 9548       923            subb a, loop_ten_times
-0945 5003       924            jnc FSM1_state2_done
-0947            925   
-0947 754B03     926            mov FSM1_state, #3
-094A            927   FSM1_state2_done:
-094A 02067A     928            ljmp Forever
-094D            929   
-094D            930   ;DELETE
-094D            931   jump:
-094D 02087E     932   ljmp FSM1_state0         
-0950            933   
-0950            934   ;State 3
-0950            935   FSM1_state3:
-0950 B40332     936            cjne a, #3, FSM1_state4
-0953 C0E0       937            push acc
-0955 7410       937            mov a, #16
-0957 14         937            dec a
-0958 1200E8     937            lcall ?Set_Cursor_2 ; Select column and row
-095B D0E0       937            pop acc
-095D C083       938            push dph
-095F C082       938            push dpl
-0961 C0E0       938            push acc
-0963 90004B     938            mov dptr, #state3
-0966 1200DD     938            lcall ?Send_Constant_String
-0969 D0E0       938            pop acc
-096B D082       938            pop dpl
-096D D083       938            pop dph
-096F 754164     939            mov pwm, #100
-0972 754700     940            mov sec, #0
-0975 754800     941            mov loop_ten_times, #0
-0978            942            
-0978            943            
-0978 E545       944            mov a, Temp_refl
-097A C3         945            clr c
-097B 9549       946            subb a, temp
-097D 5003       947            jnc FSM1_state3_done
-097F 754B04     948            mov FSM1_state, #4
-0982            949   FSM1_state3_done:
-0982 02067A     950            ljmp Forever
-0985            951   
-0985            952   
-0985            953   ;State 4
-0985            954   FSM1_state4:
-0985 B40442     955            cjne a, #4, FSM1_state5
-0988 C0E0       956            push acc
-098A 7410       956            mov a, #16
-098C 14         956            dec a
-098D 1200E8     956            lcall ?Set_Cursor_2 ; Select column and row
-0990 D0E0       956            pop acc
-0992 C083       957            push dph
-0994 C082       957            push dpl
-0996 C0E0       957            push acc
-0998 90004D     957            mov dptr, #state4
-099B 1200DD     957            lcall ?Send_Constant_String
-099E D0E0       957            pop acc
-09A0 D082       957            pop dpl
-09A2 D083       957            pop dph
-09A4 754114     958            mov pwm, #20
-09A7            959            
-09A7 E547       960            mov a, sec
-09A9 2401       961            add a, #1
-09AB F547       962            mov sec, a
-09AD            963            
-09AD E546       964            mov a, Time_refl
-09AF C3         965            clr c
-09B0 9547       966            subb a,sec
-09B2 5013       967            jnc FSM1_state4_done
-09B4            968   
-09B4 E548       969            mov a, loop_ten_times
-09B6 2401       970            add a, #1
-09B8 F548       971            mov loop_ten_times, a 
-09BA 754700     972            mov sec, #0
-09BD 7405       973            mov a, #5
-09BF C3         974            clr c 
-09C0 9548       975            subb a, loop_ten_times
-09C2 5003       976            jnc FSM1_state4_done
-09C4            977   
-09C4 754B05     978            mov FSM1_state, #5
-09C7            979   FSM1_state4_done:
-09C7 02067A     980            ljmp Forever
-09CA            981            
-09CA            982   FSM1_state5:
-09CA B40580     983            cjne a, #5, jump
-09CD C0E0       984            push acc
-09CF 7410       984            mov a, #16
-09D1 14         984            dec a
-09D2 1200E8     984            lcall ?Set_Cursor_2 ; Select column and row
-09D5 D0E0       984            pop acc
-09D7 C083       985            push dph
-09D9 C082       985            push dpl
-09DB C0E0       985            push acc
-09DD 90004F     985            mov dptr, #state5
-09E0 1200DD     985            lcall ?Send_Constant_String
-09E3 D0E0       985            pop acc
-09E5 D082       985            pop dpl
-09E7 D083       985            pop dph
-09E9 754100     986            mov pwm, #0
-09EC            987            
-09EC            988            
-09EC 743C       989            mov a, #60
-09EE C3         990            clr c
-09EF 9549       991            subb a, temp
-09F1 4003       992            jc FSM1_state5_done
-09F3 754B00     993            mov FSM1_state,#0
-09F6            994   FSM1_state5_done:
-09F6 120479     995            lcall Save_Variables ; Save variables in flash memory
-09F9 02067A     996            ljmp Forever
-09FC            997            
-09FC            998   
-09FC            999   
-09FC           1000   ;Any additions to be checked
-09FC           1001   EN
+08D3            866            ; NEW CODE
+08D3 7432       867            mov a, #50
+08D5 C3         868            clr c
+08D6 9549       869            subb a, temp
+08D8 4023       870            jc FSM1_state1_continue
+08DA            871   
+08DA E547       872            mov a, sec
+08DC 2401       873            add a, #1
+08DE F547       874            mov sec, a
+08E0            875   
+08E0 743C       876            mov a, #60
+08E2 C3         877            clr c
+08E3 9547       878            subb a, sec
+08E5 5016       879            jnc FSM1_state1_continue
+08E7            880   
+08E7 E548       881            mov a, loop_ten_times
+08E9 2401       882            add a, #1
+08EB F548       883            mov loop_ten_times, a 
+08ED 754700     884            mov sec, #0
+08F0 7408       885            mov a, #8
+08F2 C3         886            clr c 
+08F3 9548       887            subb a, loop_ten_times
+08F5 5006       888            jnc FSM1_state1_continue
+08F7            889   
+08F7 754B00     890            mov FSM1_state, #0
+08FA 02067A     891            ljmp Forever
+08FD            892   
+08FD            893   FSM1_state1_continue:
+08FD            894            ; These two lines are temporary. temp should be read from the thermocouple wire
+08FD            895            ;mov Temp_soak, #100
+08FD            896            
+08FD E543       897            mov a, Temp_soak
+08FF D3         898            setb c
+0900 9549       899            subb a, temp
+0902 5006       900            jnc FSM1_state1_done
+0904 754800     901            mov loop_ten_times, #0
+0907 754B02     902            mov FSM1_state, #2
+090A            903   FSM1_state1_done:
+090A 02067A     904            ljmp Forever
+090D            905   
+090D            906   ; State 2
+090D            907   FSM1_state2:
+090D D296       908            setb P1.6 ;speaker
+090F B40245     909            cjne a, #2, FSM1_state3
+0912 C0E0       910            push acc
+0914 7410       910            mov a, #16
+0916 14         910            dec a
+0917 1200E8     910            lcall ?Set_Cursor_2 ; Select column and row
+091A D0E0       910            pop acc
+091C C083       911            push dph
+091E C082       911            push dpl
+0920 C0E0       911            push acc
+0922 900049     911            mov dptr, #state2
+0925 1200DD     911            lcall ?Send_Constant_String
+0928 D0E0       911            pop acc
+092A D082       911            pop dpl
+092C D083       911            pop dph
+092E 754114     912            mov pwm, #20
+0931            913            
+0931 E547       914            mov a, sec
+0933 2401       915            add a, #1
+0935 F547       916            mov sec, a
+0937            917   
+0937 E544       918            mov a, Time_soak
+0939 C3         919            clr c
+093A 9547       920            subb a, sec
+093C 5013       921            jnc FSM1_state2_done
+093E            922   
+093E E548       923            mov a, loop_ten_times
+0940 2401       924            add a, #1
+0942 F548       925            mov loop_ten_times, a 
+0944 754700     926            mov sec, #0
+0947 7405       927            mov a, #5
+0949 C3         928            clr c 
+094A 9548       929            subb a, loop_ten_times
+094C 5003       930            jnc FSM1_state2_done
+094E            931   
+094E 754B03     932            mov FSM1_state, #3
+0951            933   FSM1_state2_done:
+0951 02067A     934            ljmp Forever
+0954            935   
+0954            936   ;DELETE
+0954            937   jump:
+0954 02087E     938   ljmp FSM1_state0         
+0957            939   
+0957            940   ;State 3
+0957            941   FSM1_state3:
+0957 B40332     942            cjne a, #3, FSM1_state4
+095A C0E0       943            push acc
+095C 7410       943            mov a, #16
+095E 14         943            dec a
+095F 1200E8     943            lcall ?Set_Cursor_2 ; Select column and row
+0962 D0E0       943            pop acc
+0964 C083       944            push dph
+0966 C082       944            push dpl
+0968 C0E0       944            push acc
+096A 90004B     944            mov dptr, #state3
+096D 1200DD     944            lcall ?Send_Constant_String
+0970 D0E0       944            pop acc
+0972 D082       944            pop dpl
+0974 D083       944            pop dph
+0976 754164     945            mov pwm, #100
+0979 754700     946            mov sec, #0
+097C 754800     947            mov loop_ten_times, #0
+097F            948            
+097F            949            
+097F E545       950            mov a, Temp_refl
+0981 C3         951            clr c
+0982 9549       952            subb a, temp
+0984 5003       953            jnc FSM1_state3_done
+0986 754B04     954            mov FSM1_state, #4
+0989            955   FSM1_state3_done:
+0989 02067A     956            ljmp Forever
+098C            957   
+098C            958   
+098C            959   ;State 4
+098C            960   FSM1_state4:
+098C B40442     961            cjne a, #4, FSM1_state5
+098F C0E0       962            push acc
+0991 7410       962            mov a, #16
+0993 14         962            dec a
+0994 1200E8     962            lcall ?Set_Cursor_2 ; Select column and row
+0997 D0E0       962            pop acc
+0999 C083       963            push dph
+099B C082       963            push dpl
+099D C0E0       963            push acc
+099F 90004D     963            mov dptr, #state4
+09A2 1200DD     963            lcall ?Send_Constant_String
+09A5 D0E0       963            pop acc
+09A7 D082       963            pop dpl
+09A9 D083       963            pop dph
+09AB 754114     964            mov pwm, #20
+09AE            965            
+09AE E547       966            mov a, sec
+09B0 2401       967            add a, #1
+09B2 F547       968            mov sec, a
+09B4            969            
+09B4 E546       970            mov a, Time_refl
+09B6 C3         971            clr c
+09B7 9547       972            subb a,sec
+09B9 5013       973            jnc FSM1_state4_done
+09BB            974   
+09BB E548       975            mov a, loop_ten_times
+09BD 2401       976            add a, #1
+09BF F548       977            mov loop_ten_times, a 
+09C1 754700     978            mov sec, #0
+09C4 7405       979            mov a, #5
+09C6 C3         980            clr c 
+09C7 9548       981            subb a, loop_ten_times
+09C9 5003       982            jnc FSM1_state4_done
+09CB            983   
+09CB 754B05     984            mov FSM1_state, #5
+09CE            985   FSM1_state4_done:
+09CE 02067A     986            ljmp Forever
+09D1            987            
+09D1            988   FSM1_state5:
+09D1 B40580     989            cjne a, #5, jump
+09D4 C0E0       990            push acc
+09D6 7410       990            mov a, #16
+09D8 14         990            dec a
+09D9 1200E8     990            lcall ?Set_Cursor_2 ; Select column and row
+09DC D0E0       990            pop acc
+09DE C083       991            push dph
+09E0 C082       991            push dpl
+09E2 C0E0       991            push acc
+09E4 90004F     991            mov dptr, #state5
+09E7 1200DD     991            lcall ?Send_Constant_String
+09EA D0E0       991            pop acc
+09EC D082       991            pop dpl
+09EE D083       991            pop dph
+09F0 754100     992            mov pwm, #0
+09F3            993            
+09F3            994            
+09F3 743C       995            mov a, #60
+09F5 C3         996            clr c
+09F6 9549       997            subb a, temp
+09F8 4003       998            jc FSM1_state5_done
+09FA 754B00     999            mov FSM1_state,#0
+09FD           1000   FSM1_state5_done:
+09FD 120479    1001            lcall Save_Variables ; Save variables in flash memory
+0A00 02067A    1002            ljmp Forever
+0A03           1003            
+0A03           1004   
+0A03           1005   
+0A03           1006   ;Any additions to be checked
+0A03           1007   EN

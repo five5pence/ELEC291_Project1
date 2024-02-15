@@ -473,10 +473,10 @@ main:
 	Send_Constant_String(#comma)
 
 	mov FSM1_state, #0
-    mov Temp_soak, #50
-	mov Time_soak, #60
-	mov Temp_refl, #0
-	mov Time_refl, #45
+    mov Temp_soak, #200
+	mov Time_soak, #0x60
+	mov Temp_refl, #200
+	mov Time_refl, #0x45
 	mov sec, #0
 
 	clr reflow_flag ; start on temp
@@ -505,18 +505,12 @@ turn_reflow_to_temp:
 
 	decrease_reflow_temp:
 	jb PB6, increase_reflow_temp
-	mov a, Temp_refl
-    subb a, #1
-	da a
-    mov Temp_refl, a
+    dec Temp_refl
 	ljmp soak_toggle
 	
 	increase_reflow_temp:
 	jb PB5, soak_toggle 
-	mov a, Temp_refl
-	add a, #1
-	da a 
-	mov Temp_refl, a
+	inc Temp_refl
 	ljmp soak_toggle
 
 
@@ -525,7 +519,7 @@ turn_reflow_to_time:
 	decrease_reflow_time:
 	jb PB6, increase_reflow_time
 	mov a, Time_refl
-    subb a, #1
+    add a, #0x99
 	da a
     mov Time_refl, a
 	ljmp soak_toggle
@@ -549,14 +543,23 @@ check_soak_toggle:
 turn_soak_to_temp:
 	; will use the same logic for the other pushbuttons
 ; This example will use temp_soak for this example
-ljmp start_stop
+
+	decrease_soak_temp:
+	jb PB3, increase_soak_temp
+    dec Temp_soak
+	ljmp start_stop
+	
+	increase_soak_temp:
+	jb PB2, start_stop 
+	inc Temp_soak
+	ljmp start_stop
 
 turn_soak_to_time:
 	
 	decrease_soak_time:
 	jb PB3, increase_soak_time
 	mov a, Time_soak
-    subb a, #1
+    add a, #0x99
 	da a
     mov Time_soak, a
 	ljmp start_stop

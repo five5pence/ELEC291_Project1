@@ -347,6 +347,13 @@ Load_Defaults:
 	mov Time_refl, #4
 	ret
 
+putchar:
+    jnb TI, putchar
+    clr TI
+    mov SBUF, a
+    ret
+	
+
 wait_1ms:
 	clr	TR0 ; Stop timer 0
 	clr	TF0 ; Clear overflow flag
@@ -687,13 +694,60 @@ continue:
 	lcall hex2bcd
 	Set_Cursor(1, 3)
 	lcall Display_formated_BCD_To
+	;---------------------------------;
+	; Send a BCD number to PuTTY      ;
+	;---------------------------------
+	Send_BCD mac
+		push ar0
+		mov r0, %0
+		lcall ?Send_BCD
+		pop ar0
+	endmac
+	
+	?Send_BCD:
+		push acc
+		; Write most significant digit
+		mov a, bcd+3
+		swap a
+		anl a, #0fh
+		orl a, #30h
+		lcall putchar
+		; write least significant digit
+		mov a, bcd+3
+		anl a, #0fh
+		orl a, #30h
+		lcall putchar
+		
+		; Write most significant digit
+		mov a, bcd+2
+		swap a
+		anl a, #0fh
+		orl a, #30h
+		lcall putchar
+		; write least significant digit
+		mov a, bcd+2
+		anl a, #0fh
+		orl a, #30h
+		lcall putchar
+		pop acc
+	; Write most significant digit
+		mov a, bcd+1
+		swap a
+		anl a, #0fh
+		orl a, #30h
+		lcall putchar
 
+		; Write most significant digit
+
+	
 	; Storing the thermocouple temperature into var temp 
 	Load_y(10000)
 	lcall div32
 	mov temp+0, x+0
 	mov temp+1, x+1
 	
+
+
 	; Wait 100 ms between readings
 	mov R2, #100
 	lcall waitms

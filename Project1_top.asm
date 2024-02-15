@@ -314,7 +314,7 @@ Save_Variables:
 	ORL IAPUEN, #00000001b ; APUEN = 1, enable APROM update
 	
 	MOV IAPCN, #PAGE_ERASE_AP ; Erase page 3f80h~3f7Fh
-	MOV IAPAH, #3fh ; Address high byte
+	MOV IAPAH, #3fh ; Address high byte of flash page
 	MOV IAPAL, #80h ; Address low byte
 	MOV IAPFD, #0FFh ; Data to load into the address byte
 	MOV TA, #0aah ; IAPTRG is TA protected
@@ -552,6 +552,11 @@ main:
 	mov Time_soak, #0x10
 	mov Temp_refl, #20
 	mov Time_refl, #0x10
+	; lcall Load_Variables
+    ; mov Temp_soak, #200
+	; mov Time_soak, #0x60
+	; mov Temp_refl, #200
+	; mov Time_refl, #0x45
 	mov sec, #0
 	mov loop_ten_times, #0
 
@@ -577,7 +582,7 @@ check_soak_toggle:
 
 turn_soak_to_temp:
 	; will use the same logic for the other pushbuttons
-; This example will use temp_soak for this example
+; This example will use Temp_soak for this example
 	decrease_soak_temp:
 	jb PB1, increase_soak_temp
     dec Temp_soak
@@ -826,7 +831,7 @@ FSM1:
 
 ; off state. Should go to state 1 when start button is pressed (Button 8 right now)
 FSM1_state0:
-	cjne a, #0, FSM1_state1
+	cjne a, #0, FSM1_state1_save
 	Set_Cursor(2, 16)
 	Send_Constant_String(#state0)
 	mov pwm, #0
@@ -837,7 +842,11 @@ FSM1_state0:
 FSM1_state0_done:
 	ljmp Forever
 
-; pre-heat state. Should go to state two when temp reaches temp_soak	
+FSM1_state1_save:
+	lcall Save_Variables ; Save oven settings when heating process starts
+	ljmp FSM1_state1
+
+; pre-heat state. Should go to state two when temp reaches Temp_soak	
 FSM1_state1:
 	cjne a, #1, FSM1_state2
 	Set_Cursor(2, 16)
@@ -871,7 +880,7 @@ FSM1_state1:
 
 FSM1_state1_continue:
 	; These two lines are temporary. temp should be read from the thermocouple wire
-	;mov temp_soak, #100
+	;mov Temp_soak, #100
 	
 	mov a, Temp_soak
 	setb c

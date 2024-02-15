@@ -106,6 +106,7 @@ Temp_refl: ds 1
 Time_refl: ds 1
 
 sec: ds 1
+loop_ten_times: ds 1
 temp: ds 2
 
 
@@ -547,11 +548,12 @@ main:
 	Send_Constant_String(#comma)
 
 	mov FSM1_state, #0
-    mov Temp_soak, #200
+    mov Temp_soak, #100
 	mov Time_soak, #0x60
 	mov Temp_refl, #200
 	mov Time_refl, #0x45
 	mov sec, #0
+	mov loop_ten_times, #0
 
 	clr reflow_flag ; start on temp
 	clr soak_flag ; start on temp
@@ -830,6 +832,7 @@ FSM1_state0:
 	Send_Constant_String(#state0)
 	mov pwm, #0
 	mov sec, #0
+	mov loop_ten_times, #0
 	;jb PB0, FSM1_state0_done
 	;mov FSM1_state, #1
 FSM1_state0_done:
@@ -854,6 +857,16 @@ FSM1_state1:
 	clr c
 	subb a, sec
 	jnc FSM1_state1_continue
+
+	mov a, loop_ten_times
+	add a, #1
+	mov loop_ten_times, a
+	mov sec, #0
+	mov a, #8
+	clr c
+	subb a, loop_ten_times
+	jnc FSM1_state1_continue
+
 	mov FSM1_state, #0
 	ljmp Forever
 
@@ -865,6 +878,7 @@ FSM1_state1_continue:
 	setb c
 	subb a, temp
 	jnc FSM1_state1_done
+	mov loop_ten_times, #0
 	mov FSM1_state, #2
 FSM1_state1_done:
 	ljmp Forever
@@ -881,13 +895,20 @@ FSM1_state2:
 	add a, #1
 	mov sec, a
 
-	mov R2, #50
-	lcall waitms
-
 	mov a, Time_soak
 	clr c
 	subb a, sec
 	jnc FSM1_state2_done
+
+	mov a, loop_ten_times
+	add a, #1
+	mov loop_ten_times, a
+	mov sec, #0
+	mov a, #8
+	clr c
+	subb a, loop_ten_times
+	jnc FSM1_state2_done
+
 	mov FSM1_state, #3
 FSM1_state2_done:
 	ljmp Forever
@@ -903,6 +924,7 @@ FSM1_state3:
 	Send_Constant_String(#state3)
 	mov pwm, #100
 	mov sec, #0
+	mov loop_ten_times, #0
 	
 	
 	mov a, Temp_refl
@@ -924,14 +946,21 @@ FSM1_state4:
 	mov a, sec
 	add a, #1
 	mov sec, a
-
-	mov R2, #50
-	lcall waitms
 	
 	mov a, Time_refl
 	clr c
 	subb a,sec
 	jnc FSM1_state4_done
+
+	mov a, loop_ten_times
+	add a, #1
+	mov loop_ten_times, a
+	mov sec, #0
+	mov a, #8
+	clr c
+	subb a, loop_ten_times
+	jnc FSM1_state4_done
+
 	mov FSM1_state, #5
 FSM1_state4_done:
 	ljmp Forever

@@ -40,9 +40,7 @@ TIMER0_RELOAD_1MS EQU (0x10000-(CLK/1000))
 TIMER2_RATE         EQU 100      ; 100Hz or 10ms
 TIMER2_RELOAD       EQU (65536-(CLK/(16*TIMER2_RATE))) ; Need to change timer 2 input divide to 16 in T2MOD
 
-; Flash instructions
-PAGE_ERASE_AP   EQU 00100010b
-BYTE_PROGRAM_AP EQU 00100001b
+
 ;pwn
 PWM_OUT    EQU P1.2 ; Logic 1=oven on
 
@@ -88,6 +86,10 @@ $NOLIST
 $include(LCD_4BIT.inc)
 $LIST
 
+; Flash instructions
+PAGE_ERASE_AP   EQU 00100010b
+BYTE_PROGRAM_AP EQU 00100001b
+
 ; These register definitions needed by 'math32.inc'
 DSEG at 30H
 x:   ds 4
@@ -98,9 +100,15 @@ bcd: ds 5
 DSEG
 pwm: ds 1
 state: ds 1
+temp_soak: ds 1
+Time_soak: ds 1
+Temp_refl: ds 1
+Time_refl: ds 1
+
 sec: ds 1
 loop_ten_times: ds 1
 temp: ds 2
+
 
 FSM1_state: ds 1
 
@@ -110,11 +118,6 @@ pwm_counter:  ds 1 ; Free running counter 0, 1, 2, ..., 100, 0
 
 seconds:      ds 1 ; a seconds counter attached to Timer 2 ISR
 
-DSEG at 0x30
-Temp_soak: ds 1
-Time_soak: ds 1
-Temp_refl: ds 1
-Time_refl: ds 1
 
 BSEG
 reflow_flag: dbit 1
@@ -234,7 +237,6 @@ Init_All:
 	mov RCMP2L, #low(TIMER2_RELOAD)
 	; Init the free running 10 ms counter to zero
 	mov pwm_counter, #0
-	
 	; Enable the timer and interrupts
 	orl EIE, #0x80 ; Enable timer 2 interrupt ET2=1
     setb TR2  ; Enable timer 2
@@ -322,9 +324,9 @@ Save_Variables:
 	MOV IAPCN, #BYTE_PROGRAM_AP
 	MOV IAPAH, #3fh
 	
-	;Load 3f80h with Temp_soak
+	;Load 3f80h with temp_soak
 	MOV IAPAL, #80h
-	MOV IAPFD, Temp_soak
+	MOV IAPFD, temp_soak
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG,#00000001b ; Basically, this executes the write to flash memory
@@ -388,7 +390,7 @@ Load_Variables:
 	mov dptr, #0x3f80
 	clr a
 	movc a, @a+dptr
-	mov Temp_soak, a
+	mov temp_soak, a
 	
 	inc dptr
 	clr a
@@ -407,10 +409,10 @@ Load_Variables:
 	ret
 
 Load_Defaults:
-	mov Temp_soak, #0xC8 ; 200 in HEX
-	mov Time_soak, #0x3C ; 60 in HEX
-	mov Temp_refl, #0xC8 ; 200 in HEX
-	mov Time_refl, #0x2D ; 45 in HEX
+	mov temp_soak, #1
+	mov Time_soak, #2
+	mov Temp_refl, #3
+	mov Time_refl, #4
 	ret
 
 putchar:
@@ -546,10 +548,10 @@ main:
 	Send_Constant_String(#comma)
 
 	mov FSM1_state, #0
-    mov Temp_soak, #200
-	mov Time_soak, #0x60
-	mov Temp_refl, #200
-	mov Time_refl, #0x45
+    mov Temp_soak, #20
+	mov Time_soak, #0x10
+	mov Temp_refl, #20
+	mov Time_refl, #0x10
 	mov sec, #0
 	mov loop_ten_times, #0
 
@@ -613,7 +615,7 @@ check_reflow_toggle:
 
 turn_reflow_to_temp:
 	; will use the same logic for the other pushbuttons
-; This example will use Temp_soak for this example
+; This example will use temp_soak for this example
 
 	decrease_reflow_temp:
 	jb PB6, increase_reflow_temp
@@ -661,7 +663,6 @@ start_stop:
 	jb PB0, continue
 
 turn_on:
-	lcall Save_Variables ; Save variables to flash memory
 	mov a, FSM1_state
 	cjne a, #0, turn_off
 	mov FSM1_state, #1
@@ -671,8 +672,10 @@ turn_off:
 	mov FSM1_state, #0
 	sjmp continue
 
+
 continue:
 	lcall ADC_to_PB
+	;lcall Display_PushButtons_ADC
 	
 	mov ADCCON0, #0x07 ; Select channel 7 (P1.1)
 	clr ADCF
@@ -834,7 +837,7 @@ FSM1_state0:
 FSM1_state0_done:
 	ljmp Forever
 
-; pre-heat state. Should go to state two when temp reaches Temp_soak	
+; pre-heat state. Should go to state two when temp reaches temp_soak	
 FSM1_state1:
 	cjne a, #1, FSM1_state2
 	Set_Cursor(2, 16)
@@ -856,10 +859,10 @@ FSM1_state1:
 
 	mov a, loop_ten_times
 	add a, #1
-	mov loop_ten_times, a
+	mov loop_ten_times, a 
 	mov sec, #0
 	mov a, #8
-	clr c
+	clr c 
 	subb a, loop_ten_times
 	jnc FSM1_state1_continue
 
@@ -898,10 +901,10 @@ FSM1_state2:
 
 	mov a, loop_ten_times
 	add a, #1
-	mov loop_ten_times, a
+	mov loop_ten_times, a 
 	mov sec, #0
-	mov a, #8
-	clr c
+	mov a, #5
+	clr c 
 	subb a, loop_ten_times
 	jnc FSM1_state2_done
 
@@ -950,10 +953,10 @@ FSM1_state4:
 
 	mov a, loop_ten_times
 	add a, #1
-	mov loop_ten_times, a
+	mov loop_ten_times, a 
 	mov sec, #0
-	mov a, #8
-	clr c
+	mov a, #5
+	clr c 
 	subb a, loop_ten_times
 	jnc FSM1_state4_done
 
@@ -974,6 +977,7 @@ FSM1_state5:
 	jc FSM1_state5_done
 	mov FSM1_state,#0
 FSM1_state5_done:
+	lcall Save_Variables ; Save variables in flash memory
 	ljmp Forever
 	
 

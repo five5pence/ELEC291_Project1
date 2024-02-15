@@ -137,6 +137,25 @@ Left_blank_%M_b:
 	Display_char(#' ')
 endmac
 
+
+;binary to display 3 digits on lcd screen
+
+SendToLCD:
+	mov b, #100
+	div ab
+	orl a, #0x30
+	lcall ?WriteData
+	mov a,b
+	mov b,#10
+	div ab
+	orl a, #0x30
+	lcall ?WriteData
+	mov a, b
+	orl a, #0x30
+	lcall ?WriteData
+	ret
+
+
 ; Formatting to display thermocouple temperature
 ; Display: 0000.00
 Display_formated_BCD_To:
@@ -526,6 +545,14 @@ turn_soak_to_time:
 	ljmp start_stop
 
 start_stop:
+	mov a, Temp_refl
+	Set_cursor(2,2)
+	lcall SendToLCD
+	clr a
+	mov a, Time_soak
+	Set_cursor(2,9)
+	lcall SendToLCD
+	clr a
 	Set_Cursor(2,6)
 	Display_BCD(Time_refl)
 	Set_Cursor(2,13)

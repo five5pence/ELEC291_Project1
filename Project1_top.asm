@@ -101,6 +101,8 @@ temp: ds 2
 FSM1_state: ds 1
 
 BSEG
+reflow_flag: dbit 1
+soak_flag: dbit 1
 mf: dbit 1
 
 ; These eight bit variables store the value of the pushbuttons after calling 'ADC_to_PB' below
@@ -447,6 +449,9 @@ main:
 	mov Time_refl, #45
 	mov sec, #0
 
+	clr reflow_flag ; start on temp
+	clr soak_flag ; start on temp
+
 Forever:
 	jb PB6, increase
 
@@ -482,10 +487,38 @@ turn_on:
 	mov a, FSM1_state
 	cjne a, #0, turn_off
 	mov FSM1_state, #1
-	sjmp continue
+	sjmp reflow_toggle
 
 turn_off:
 	mov FSM1_state, #0
+	sjmp reflow_toggle
+
+; REFLOW ;
+reflow_toggle:
+	jb PB7, soak_toggle
+	cpl reflow_flag ; if button is pressed, change flag
+	jnb reflow_flag, turn_reflow_to_temp ; if flag is 0, go to temp mode
+
+turn_reflow_to_time:
+	;
+	sjmp soak_toggle
+
+turn_reflow_to_temp:
+	;
+	sjmp soak_toggle
+
+; SOAK ;
+soak_toggle:
+	jb PB4, continue
+	cpl soak_flag ; if button is pressed, change flag
+	jnb soak_flag, turn_soak_to_temp ; if flag is 0, go to temp mode
+
+turn_soak_to_time:
+	;
+	sjmp continue
+
+turn_soak_to_temp:
+	;
 	sjmp continue
 
 continue:

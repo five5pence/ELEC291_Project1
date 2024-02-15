@@ -40,7 +40,9 @@ TIMER0_RELOAD_1MS EQU (0x10000-(CLK/1000))
 TIMER2_RATE         EQU 100      ; 100Hz or 10ms
 TIMER2_RELOAD       EQU (65536-(CLK/(16*TIMER2_RATE))) ; Need to change timer 2 input divide to 16 in T2MOD
 
-
+; Flash instructions
+PAGE_ERASE_AP   EQU 00100010b
+BYTE_PROGRAM_AP EQU 00100001b
 ;pwn
 PWM_OUT    EQU P1.2 ; Logic 1=oven on
 
@@ -85,10 +87,6 @@ LCD_D7 equ P0.3
 $NOLIST
 $include(LCD_4BIT.inc)
 $LIST
-
-; Flash instructions
-PAGE_ERASE_AP   EQU 00100010b
-BYTE_PROGRAM_AP EQU 00100001b
 
 ; These register definitions needed by 'math32.inc'
 DSEG at 30H
@@ -644,7 +642,6 @@ turn_soak_to_time:
 	ljmp start_stop
 
 start_stop:
-	lcall Save_Variables ; Save variables to flash memory
 	mov a, Temp_refl
 	Set_cursor(2,2)
 	lcall SendToLCD
@@ -660,6 +657,7 @@ start_stop:
 	jb PB0, continue
 
 turn_on:
+	lcall Save_Variables ; Save variables to flash memory
 	mov a, FSM1_state
 	cjne a, #0, turn_off
 	mov FSM1_state, #1
@@ -669,10 +667,8 @@ turn_off:
 	mov FSM1_state, #0
 	sjmp continue
 
-
 continue:
 	lcall ADC_to_PB
-	;lcall Display_PushButtons_ADC
 	
 	mov ADCCON0, #0x07 ; Select channel 7 (P1.1)
 	clr ADCF

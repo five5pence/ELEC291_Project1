@@ -34,14 +34,14 @@ sp - main
 r2 - forever
 
 BUTTON ORDER (left to right)
-PB7 - MODE
-PB6 - UP
-PB5 - DOWN
-PB4 - START/STOP
-PB3 - 
-PB2 - 
+PB7 - REFLOW TOGGLE
+PB6 - DOWN (REFLOW)
+PB5 - UP (REFLOW)
+PB4 - SOAK TOGGLE
+PB3 - DOWN (SOAK)
+PB2 - UP (SOAK)
 PB1 -
-PB0 - 
+PB0 - START/STOP
 
 TIMERS
 Timer0 - Checking reflow/soak times for FSM

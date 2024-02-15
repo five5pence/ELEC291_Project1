@@ -443,7 +443,7 @@ main:
 	mov FSM1_state, #0
     mov Temp_soak, #50
 	mov Time_soak, #60
-	mov Temp_refl, #200
+	mov Temp_refl, #0
 	mov Time_refl, #45
 	mov sec, #0
 
@@ -474,6 +474,8 @@ increase:
 	ljmp continue1
 
 continue1:
+	Set_Cursor(2, 1)
+	Display_BCD(Temp_refl)
 	jb PB0, continue
 
 turn_on:

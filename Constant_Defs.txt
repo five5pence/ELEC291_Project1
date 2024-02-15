@@ -45,5 +45,5 @@ PB0 -
 
 TIMERS
 Timer0 - Checking reflow/soak times for FSM
-Timer1 - S 
+Timer1 - 
 TImer2 - Power

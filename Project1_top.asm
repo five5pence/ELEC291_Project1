@@ -42,6 +42,9 @@ ORG 0x0000
 
 ; Initialization Messages
 temperature_message:     db 'O=       J=     ', 0
+comma              :     db ','               , 0
+soak_message       :     db 'r'               , 0
+reflow_message     :     db 's'               , 0
 
 state0:	   db '0', 0
 state1:	   db '1', 0
@@ -460,6 +463,14 @@ main:
     ; initial messages in LCD
     Set_Cursor(1, 1)
     Send_Constant_String(#temperature_message)
+	Set_Cursor(2,1)
+	Send_Constant_String(#soak_message)
+	Set_Cursor(2,5)
+	Send_Constant_String(#comma)
+	Set_Cursor(2,8)
+	Send_Constant_String(#reflow_message)
+	Set_Cursor(2,12)
+	Send_Constant_String(#comma)
 
 	mov FSM1_state, #0
     mov Temp_soak, #50

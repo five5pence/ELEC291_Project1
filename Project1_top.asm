@@ -747,7 +747,7 @@ continue:
 	mov y+0, amb_temp+0
 	mov y+1, amb_temp+1
 	mov y+2, amb_temp+2
-	mov y+3, amb_temp+3S
+	mov y+3, amb_temp+3
 	lcall add32
 	
 	; Convert to BCD and display
@@ -775,6 +775,7 @@ FSM1_state0:
 	Set_Cursor(2, 16)
 	Send_Constant_String(#state0)
 	mov pwm, #0
+	mov sec, #0
 	;jb PB0, FSM1_state0_done
 	;mov FSM1_state, #1
 FSM1_state0_done:
@@ -789,8 +790,20 @@ FSM1_state1:
 	clr P1.6
 	
 	mov pwm, #100
-	mov sec, #0
 	
+	;Failsafe. Returns to state 0 if temperature is not reached in 6 seconds (should be 60 idk how to do it)
+	mov a, sec
+	add a, #1
+	mov sec, a
+
+	mov a, #60
+	clr c
+	subb a, sec
+	jnc FSM1_state1_continue
+	mov FSM1_state, #0
+	ljmp Forever
+
+FSM1_state1_continue:
 	; These two lines are temporary. temp should be read from the thermocouple wire
 	mov temp_soak, #100
 	

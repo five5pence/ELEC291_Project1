@@ -310,7 +310,7 @@ Save_Variables:
 	ret
 
 Load_Variables:
-	mov dptr, #0x3f81  ; First key value location.  Must be 0x55
+	mov dptr, #0x3f85  ; First key value location.  Must be 0x55
 	clr a
 	movc a, @a+dptr
 	cjne a, #0x55, Load_Defaults

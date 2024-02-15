@@ -453,9 +453,7 @@ main:
 	clr soak_flag ; start on temp
 
 Forever:
-
-; START/STOP ;
-	jb PB0, reflow_toggle
+	jb PB0, continue
 
 turn_on:
 	mov a, FSM1_state

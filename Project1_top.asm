@@ -453,7 +453,7 @@ main:
 	clr soak_flag ; start on temp
 
 Forever:
-	jb PB6, increase
+
 
 ; Example branch for decreasing any given value 
 ; This set of code will increase the ones columnn of any given 
@@ -461,65 +461,56 @@ Forever:
 ; the 10s and 100s column will update in response to increasing 
 ; the ones column beyond 9.
 
-; will use the same logic for the other pushbuttons
+; REFLOW ;
+reflow_toggle:
+	jb PB7, check_reflow_toggle
+	cpl reflow_flag ; if button is pressed, change flag
+
+check_reflow_toggle: 
+	jb reflow_flag, turn_reflow_to_time
+
+turn_reflow_to_temp:
+	; will use the same logic for the other pushbuttons
 ; This example will use temp_soak for this example
-decrease:
-	jb PB5, continue1
-	mov a, Temp_refl
+
+
+
+turn_reflow_to_time:
+	
+	decrease:
+	jb PB6, increase
+	mov a, Time_refl
     subb a, #1
 	da a
-    mov Temp_refl, a
+    mov Time_refl, a
 	ljmp continue1
-increase:
-	jb PB5, continue1
-	mov a, Temp_refl
+	
+	increase:
+	jb PB5, continue1 
+	mov a, Time_refl
 	add a, #1
 	da a 
-	mov Temp_refl, a
+	mov Time_refl, a
 	ljmp continue1
 
+; SOAK ;
+
+
 continue1:
-	Set_Cursor(2, 1)
-	Display_BCD(Temp_refl)
+	Set_Cursor(2,6)
+	Display_BCD(Time_refl)
 	jb PB0, continue
 
 turn_on:
 	mov a, FSM1_state
 	cjne a, #0, turn_off
 	mov FSM1_state, #1
-	sjmp reflow_toggle
+	sjmp continue
 
 turn_off:
 	mov FSM1_state, #0
-	sjmp reflow_toggle
-
-; REFLOW ;
-reflow_toggle:
-	jb PB7, soak_toggle
-	cpl reflow_flag ; if button is pressed, change flag
-	jnb reflow_flag, turn_reflow_to_temp ; if flag is 0, go to temp mode
-
-turn_reflow_to_time:
-	;
-	sjmp soak_toggle
-
-turn_reflow_to_temp:
-	;
-	sjmp soak_toggle
-
-; SOAK ;
-soak_toggle:
-	jb PB4, continue
-	cpl soak_flag ; if button is pressed, change flag
-	jnb soak_flag, turn_soak_to_temp ; if flag is 0, go to temp mode
-
-turn_soak_to_time:
-	;
 	sjmp continue
 
-turn_soak_to_temp:
-	;
-	sjmp continue
 
 continue:
 	lcall ADC_to_PB

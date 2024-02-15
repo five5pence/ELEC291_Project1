@@ -276,43 +276,43 @@
 0429 75AF21     256            MOV IAPCN, #BYTE_PROGRAM_AP
 042C 75A73F     257            MOV IAPAH, #3fh
 042F            258            
-042F            259            ;Load 3f80h with temp_soak
-042F 75A680     260            MOV IAPAL, #80h
+042F            259            ;Load 3f81h with temp_soak
+042F 75A681     260            MOV IAPAL, #81h
 0432 8543AE     261            MOV IAPFD, Temp_soak
 0435 75C7AA     262            MOV TA, #0aah
 0438 75C755     263            MOV TA, #55h
 043B 43A401     264            ORL IAPTRG,#00000001b ; Basically, this executes the write to flash memory
 043E            265            
 043E            266            ;Load 3f81h with Time_soak
-043E 75A681     267            MOV IAPAL, #81h
+043E 75A682     267            MOV IAPAL, #82h
 0441 8544AE     268            MOV IAPFD, Time_soak
 0444 75C7AA     269            MOV TA, #0aah
 0447 75C755     270            MOV TA, #55h
 044A 43A401     271            ORL IAPTRG,#00000001b
 044D            272            
 044D            273            ;Load 3f82h with Temp_refl
-044D 75A682     274            MOV IAPAL, #82h
+044D 75A683     274            MOV IAPAL, #83h
 0450 8545AE     275            MOV IAPFD, Temp_refl
 0453 75C7AA     276            MOV TA, #0aah
 0456 75C755     277            MOV TA, #55h
 0459 43A401     278            ORL IAPTRG,#00000001b
 045C            279            
 045C            280            ;Load 3f83h with Time_refl
-045C 75A683     281            MOV IAPAL, #83h
+045C 75A684     281            MOV IAPAL, #84h
 045F 8546AE     282            MOV IAPFD, Time_refl
 0462 75C7AA     283            MOV TA, #0aah
 0465 75C755     284            MOV TA, #55h
 0468 43A401     285            ORL IAPTRG,#00000001b
 046B            286   
 046B            287            ;Load 3f84h with 55h
-046B 75A684     288            MOV IAPAL,#84h
+046B 75A685     288            MOV IAPAL,#85h
 046E 75AE55     289            MOV IAPFD, #55h
 0471 75C7AA     290            MOV TA, #0aah
 0474 75C755     291            MOV TA, #55h
 0477 43A401     292            ORL IAPTRG, #00000001b
 047A            293   
 047A            294            ;Load 3f85h with aah (spacer value indicating EOF, will load if something funny happens)
-047A 75A685     295            MOV IAPAL, #85h
+047A 75A686     295            MOV IAPAL, #86h
 047D 75AEAA     296            MOV IAPFD, #0aah
 0480 75C7AA     297            MOV TA, #0aah
 0483 75C755     298            MOV TA, #55h
@@ -330,7 +330,7 @@
 049D 22         310            ret
 049E            311   
 049E            312   Load_Variables:
-049E 903F84     313            mov dptr, #0x3f84  ; First key value location.  Must be 0x55
+049E 903F81     313            mov dptr, #0x3f81  ; First key value location.  Must be 0x55
 04A1 E4         314            clr a
 04A2 93         315            movc a, @a+dptr
 04A3 B4551D     316            cjne a, #0x55, Load_Defaults
@@ -339,7 +339,7 @@
 04A8 93         319            movc a, @a+dptr
 04A9 B4AA17     320            cjne a, #0xaa, Load_Defaults
 04AC            321            
-04AC 903F80     322            mov dptr, #0x3f80
+04AC 903F81     322            mov dptr, #0x3f81
 04AF E4         323            clr a
 04B0 93         324            movc a, @a+dptr
 04B1 F543       325            mov Temp_soak, a
@@ -361,9 +361,9 @@
 04C2 22         341            ret
 04C3            342   
 04C3            343   Load_Defaults:
-04C3 7543C8     344            mov Temp_soak, #200
+04C3 7543C8     344            mov Temp_soak, #0xC8
 04C6 754460     345            mov Time_soak, #0x60
-04C9 7545C8     346            mov Temp_refl, #200
+04C9 7545C8     346            mov Temp_refl, #0xC8
 04CC 754645     347            mov Time_refl, #0x45
 04CF 22         348            ret
 04D0            349   
@@ -653,7 +653,7 @@
 0664 D0E0       574            pop acc
 0666 12034A     575            lcall SendToLCD
 0669 E4         576            clr a
-066A E544       577            mov a, Time_soak
+066A E543       577            mov a, Temp_soak
 066C C0E0       578            push acc
 066E 7409       578            mov a, #9
 0670 14         578            dec a
@@ -877,9 +877,9 @@
 0819 754700     723            mov sec, #0
 081C            724            
 081C            725            ; These two lines are temporary. temp should be read from the thermocouple wire
-081C 754364     726            mov temp_soak, #100
+081C 754364     726            mov Temp_soak, #100
 081F            727            
-081F E543       728            mov a, temp_soak
+081F E543       728            mov a, Temp_soak
 0821 D3         729            setb c
 0822 9548       730            subb a, temp
 0824 5003       731            jnc FSM1_state1_done

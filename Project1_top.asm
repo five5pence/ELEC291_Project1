@@ -310,7 +310,7 @@ Save_Variables:
 	ret
 
 Load_Variables:
-	mov dptr, #0x3f85  ; First key value location.  Must be 0x55
+	mov dptr, #0x3f81  ; First key value location.  Must be 0x55
 	clr a
 	movc a, @a+dptr
 	cjne a, #0x55, Load_Defaults
@@ -341,9 +341,9 @@ Load_Variables:
 	ret
 
 Load_Defaults:
-	mov Temp_soak, #200
+	mov Temp_soak, #0xC8
 	mov Time_soak, #0x60
-	mov Temp_refl, #200
+	mov Temp_refl, #0xC8
 	mov Time_refl, #0x45
 	ret
 
@@ -574,7 +574,7 @@ start_stop:
 	Set_cursor(2,2)
 	lcall SendToLCD
 	clr a
-	mov a, Time_soak
+	mov a, Temp_soak
 	Set_cursor(2,9)
 	lcall SendToLCD
 	clr a
@@ -723,9 +723,9 @@ FSM1_state1:
 	mov sec, #0
 	
 	; These two lines are temporary. temp should be read from the thermocouple wire
-	mov temp_soak, #100
+	mov Temp_soak, #100
 	
-	mov a, temp_soak
+	mov a, Temp_soak
 	setb c
 	subb a, temp
 	jnc FSM1_state1_done

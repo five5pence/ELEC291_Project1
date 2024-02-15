@@ -100,7 +100,7 @@ bcd: ds 5
 DSEG
 pwm: ds 1
 state: ds 1
-temp_soak: ds 1
+Temp_soak: ds 1
 Time_soak: ds 1
 Temp_refl: ds 1
 Time_refl: ds 1
@@ -236,6 +236,7 @@ Init_All:
 	mov RCMP2L, #low(TIMER2_RELOAD)
 	; Init the free running 10 ms counter to zero
 	mov pwm_counter, #0
+	
 	; Enable the timer and interrupts
 	orl EIE, #0x80 ; Enable timer 2 interrupt ET2=1
     setb TR2  ; Enable timer 2
@@ -323,9 +324,9 @@ Save_Variables:
 	MOV IAPCN, #BYTE_PROGRAM_AP
 	MOV IAPAH, #3fh
 	
-	;Load 3f80h with temp_soak
+	;Load 3f80h with Temp_soak
 	MOV IAPAL, #80h
-	MOV IAPFD, temp_soak
+	MOV IAPFD, Temp_soak
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG,#00000001b ; Basically, this executes the write to flash memory
@@ -389,7 +390,7 @@ Load_Variables:
 	mov dptr, #0x3f80
 	clr a
 	movc a, @a+dptr
-	mov temp_soak, a
+	mov Temp_soak, a
 	
 	inc dptr
 	clr a
@@ -408,10 +409,10 @@ Load_Variables:
 	ret
 
 Load_Defaults:
-	mov temp_soak, #1
-	mov Time_soak, #2
-	mov Temp_refl, #3
-	mov Time_refl, #4
+	mov Temp_soak, #200
+	mov Time_soak, #60
+	mov Temp_refl, #200
+	mov Time_refl, #45
 	ret
 
 putchar:
@@ -547,10 +548,7 @@ main:
 	Send_Constant_String(#comma)
 
 	mov FSM1_state, #0
-    mov Temp_soak, #200
-	mov Time_soak, #0x60
-	mov Temp_refl, #200
-	mov Time_refl, #0x45
+    lcall Load_Variables ; Load variables from flash memory
 	mov sec, #0
 
 	clr reflow_flag ; start on temp
@@ -575,7 +573,7 @@ check_reflow_toggle:
 
 turn_reflow_to_temp:
 	; will use the same logic for the other pushbuttons
-; This example will use temp_soak for this example
+; This example will use Temp_soak for this example
 
 	decrease_reflow_temp:
 	jb PB6, increase_reflow_temp
@@ -616,7 +614,7 @@ check_soak_toggle:
 
 turn_soak_to_temp:
 	; will use the same logic for the other pushbuttons
-; This example will use temp_soak for this example
+; This example will use Temp_soak for this example
 
 	decrease_soak_temp:
 	jb PB3, increase_soak_temp
@@ -647,6 +645,7 @@ turn_soak_to_time:
 	ljmp start_stop
 
 start_stop:
+	lcall Save_Variables ; Save variables to flash memory
 	mov a, Temp_refl
 	Set_cursor(2,2)
 	lcall SendToLCD
@@ -835,7 +834,7 @@ FSM1_state0:
 FSM1_state0_done:
 	ljmp Forever
 
-; pre-heat state. Should go to state two when temp reaches temp_soak	
+; pre-heat state. Should go to state two when temp reaches Temp_soak	
 FSM1_state1:
 	cjne a, #1, FSM1_state2
 	Set_Cursor(2, 16)
@@ -859,9 +858,9 @@ FSM1_state1:
 
 FSM1_state1_continue:
 	; These two lines are temporary. temp should be read from the thermocouple wire
-	mov temp_soak, #100
+	mov Temp_soak, #100
 	
-	mov a, temp_soak
+	mov a, Temp_soak
 	setb c
 	subb a, temp
 	jnc FSM1_state1_done
@@ -949,7 +948,6 @@ FSM1_state5:
 	jc FSM1_state5_done
 	mov FSM1_state,#0
 FSM1_state5_done:
-	lcall Save_Variables ; Save variables in flash memory
 	ljmp Forever
 	
 

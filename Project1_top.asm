@@ -492,6 +492,20 @@ turn_reflow_to_temp:
 	; will use the same logic for the other pushbuttons
 ; This example will use temp_soak for this example
 
+	decrease_reflow_temp:
+	jb PB6, increase_reflow_temp
+	mov a, Temp_refl
+    subb a, #1
+	da a
+    mov Temp_refl, a
+	ljmp soak_toggle
+	
+	increase_reflow_temp:
+	jb PB5, soak_toggle 
+	mov a, Temp_refl
+	add a, #1
+	da a 
+	mov Temp_refl, a
 	ljmp soak_toggle
 
 

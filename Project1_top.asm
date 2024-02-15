@@ -565,6 +565,44 @@ Forever:
 ; the 10s and 100s column will update in response to increasing 
 ; the ones column beyond 9.
 
+; SOAK ;
+soak_toggle:
+	jb PB4, check_soak_toggle
+	cpl soak_flag ; if button is pressed, change flag
+
+check_soak_toggle: 
+	jb soak_flag, turn_soak_to_time
+
+turn_soak_to_temp:
+	; will use the same logic for the other pushbuttons
+; This example will use temp_soak for this example
+	decrease_soak_temp:
+	jb PB1, increase_soak_temp
+    dec Temp_soak
+	ljmp reflow_toggle
+	
+	increase_soak_temp:
+	jb PB2, reflow_toggle 
+	inc Temp_soak
+	ljmp reflow_toggle
+
+turn_soak_to_time:
+	decrease_soak_time:
+	jb PB1, increase_soak_time
+	mov a, Time_soak
+    add a, #0x99
+	da a
+    mov Time_soak, a
+	ljmp reflow_toggle
+	
+	increase_soak_time:
+	jb PB2, reflow_toggle
+	mov a, Time_soak
+	add a, #1
+	da a 
+	mov Time_soak, a
+	ljmp reflow_toggle
+
 ; REFLOW ;
 reflow_toggle:
 	jb PB7, check_reflow_toggle
@@ -580,12 +618,12 @@ turn_reflow_to_temp:
 	decrease_reflow_temp:
 	jb PB6, increase_reflow_temp
     dec Temp_refl
-	ljmp soak_toggle
+	ljmp start_stop
 	
 	increase_reflow_temp:
-	jb PB5, soak_toggle 
+	jb PB5, start_stop
 	inc Temp_refl
-	ljmp soak_toggle
+	ljmp start_stop
 
 
 turn_reflow_to_time:
@@ -596,62 +634,23 @@ turn_reflow_to_time:
     add a, #0x99
 	da a
     mov Time_refl, a
-	ljmp soak_toggle
+	ljmp start_stop
 	
 	increase_reflow_time:
-	jb PB5, soak_toggle 
+	jb PB5, start_stop 
 	mov a, Time_refl
 	add a, #1
 	da a 
 	mov Time_refl, a
-	ljmp soak_toggle
-
-; SOAK ;
-soak_toggle:
-	jb PB4, check_soak_toggle
-	cpl soak_flag ; if button is pressed, change flag
-
-check_soak_toggle: 
-	jb soak_flag, turn_soak_to_time
-
-turn_soak_to_temp:
-	; will use the same logic for the other pushbuttons
-; This example will use temp_soak for this example
-
-	decrease_soak_temp:
-	jb PB3, increase_soak_temp
-    dec Temp_soak
-	ljmp start_stop
-	
-	increase_soak_temp:
-	jb PB2, start_stop 
-	inc Temp_soak
 	ljmp start_stop
 
-turn_soak_to_time:
-	
-	decrease_soak_time:
-	jb PB3, increase_soak_time
-	mov a, Time_soak
-    add a, #0x99
-	da a
-    mov Time_soak, a
-	ljmp start_stop
-	
-	increase_soak_time:
-	jb PB2, soak_toggle 
-	mov a, Time_soak
-	add a, #1
-	da a 
-	mov Time_soak, a
-	ljmp start_stop
 
 start_stop:
 	mov a, Temp_refl
 	Set_cursor(2,2)
 	lcall SendToLCD
 	clr a
-	mov a, Time_soak
+	mov a, Temp_soak
 	Set_cursor(2,9)
 	lcall SendToLCD
 	clr a
@@ -859,7 +858,7 @@ FSM1_state1:
 
 FSM1_state1_continue:
 	; These two lines are temporary. temp should be read from the thermocouple wire
-	mov temp_soak, #100
+	;mov temp_soak, #100
 	
 	mov a, temp_soak
 	setb c

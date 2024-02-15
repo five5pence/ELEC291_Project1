@@ -473,32 +473,63 @@ turn_reflow_to_temp:
 	; will use the same logic for the other pushbuttons
 ; This example will use temp_soak for this example
 
+	ljmp soak_toggle
 
 
 turn_reflow_to_time:
 	
-	decrease:
-	jb PB6, increase
+	decrease_reflow_time:
+	jb PB6, increase_reflow_time
 	mov a, Time_refl
     subb a, #1
 	da a
     mov Time_refl, a
-	ljmp continue1
+	ljmp soak_toggle
 	
-	increase:
-	jb PB5, continue1 
+	increase_reflow_time:
+	jb PB5, soak_toggle 
 	mov a, Time_refl
 	add a, #1
 	da a 
 	mov Time_refl, a
-	ljmp continue1
+	ljmp soak_toggle
 
 ; SOAK ;
+soak_toggle:
+	jb PB4, check_soak_toggle
+	cpl soak_flag ; if button is pressed, change flag
 
+check_soak_toggle: 
+	jb soak_flag, turn_soak_to_time
 
-continue1:
+turn_soak_to_temp:
+	; will use the same logic for the other pushbuttons
+; This example will use temp_soak for this example
+ljmp start_stop
+
+turn_soak_to_time:
+	
+	decrease_soak_time:
+	jb PB3, increase_soak_time
+	mov a, Time_soak
+    subb a, #1
+	da a
+    mov Time_soak, a
+	ljmp start_stop
+	
+	increase_soak_time:
+	jb PB2, soak_toggle 
+	mov a, Time_soak
+	add a, #1
+	da a 
+	mov Time_soak, a
+	ljmp start_stop
+
+start_stop:
 	Set_Cursor(2,6)
 	Display_BCD(Time_refl)
+	Set_Cursor(2,13)
+	Display_BCD(Time_soak)
 	jb PB0, continue
 
 turn_on:

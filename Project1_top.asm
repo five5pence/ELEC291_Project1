@@ -257,42 +257,42 @@ Save_Variables:
 	MOV IAPAH, #3fh
 	
 	;Load 3f81h with temp_soak
-	MOV IAPAL, #81h
+	MOV IAPAL, #83h
 	MOV IAPFD, Temp_soak
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG,#00000001b ; Basically, this executes the write to flash memory
 	
 	;Load 3f81h with Time_soak
-	MOV IAPAL, #82h
+	MOV IAPAL, #84h
 	MOV IAPFD, Time_soak
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG,#00000001b
 	
 	;Load 3f82h with Temp_refl
-	MOV IAPAL, #83h
+	MOV IAPAL, #85h
 	MOV IAPFD, Temp_refl
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG,#00000001b
 	
 	;Load 3f83h with Time_refl
-	MOV IAPAL, #84h
+	MOV IAPAL, #86h
 	MOV IAPFD, Time_refl
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG,#00000001b
 
 	;Load 3f84h with 55h
-	MOV IAPAL,#85h
+	MOV IAPAL,#87h
 	MOV IAPFD, #55h
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG, #00000001b
 
 	;Load 3f85h with aah (spacer value indicating EOF, will load if something funny happens)
-	MOV IAPAL, #86h
+	MOV IAPAL, #88h
 	MOV IAPFD, #0aah
 	MOV TA, #0aah
 	MOV TA, #55h
@@ -310,7 +310,7 @@ Save_Variables:
 	ret
 
 Load_Variables:
-	mov dptr, #0x3f85  ; First key value location.  Must be 0x55
+	mov dptr, #0x3f87  ; First key value location.  Must be 0x55
 	clr a
 	movc a, @a+dptr
 	cjne a, #0x55, Load_Defaults
@@ -319,7 +319,7 @@ Load_Variables:
 	movc a, @a+dptr
 	cjne a, #0xaa, Load_Defaults
 	
-	mov dptr, #0x3f81
+	mov dptr, #0x3f83
 	clr a
 	movc a, @a+dptr
 	mov Temp_soak, a
@@ -582,6 +582,8 @@ start_stop:
 	Display_BCD(Time_refl)
 	Set_Cursor(2,13)
 	Display_BCD(Time_soak)
+	lcall Save_Variables ; Save variables in flash memory
+	
 	jb PB0, continue
 
 turn_on:
@@ -813,7 +815,6 @@ FSM1_state5:
 	jc FSM1_state5_done
 	mov FSM1_state,#0
 FSM1_state5_done:
-	lcall Save_Variables ; Save variables in flash memory
 	ljmp Forever
 	
 

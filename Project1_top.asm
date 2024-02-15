@@ -37,14 +37,22 @@ BAUD              EQU 115200 ; Baud rate of UART in bps
 TIMER1_RELOAD     EQU (0x100-(CLK/(16*BAUD)))
 TIMER0_RELOAD_1MS EQU (0x10000-(CLK/1000))
 
+TIMER2_RATE         EQU 100      ; 100Hz or 10ms
+TIMER2_RELOAD       EQU (65536-(CLK/(16*TIMER2_RATE))) ; Need to change timer 2 input divide to 16 in T2MOD
+
+
+;pwn
+PWM_OUT    EQU P1.2 ; Logic 1=oven on
+
 ORG 0x0000
     ljmp main
-
+ORG 0x002B
+	ljmp Timer2_ISR
 ; Initialization Messages
 temperature_message:     db 'O=       J=     ', 0
 comma              :     db ','               , 0
-soak_message       :     db 'r'               , 0
-reflow_message     :     db 's'               , 0
+soak_message       :     db 's'               , 0
+reflow_message     :     db 'r'               , 0
 
 state0:	   db '0', 0
 state1:	   db '1', 0
@@ -103,6 +111,13 @@ temp: ds 2
 
 FSM1_state: ds 1
 
+
+;for pwm
+pwm_counter:  ds 1 ; Free running counter 0, 1, 2, ..., 100, 0
+
+seconds:      ds 1 ; a seconds counter attached to Timer 2 ISR
+
+
 BSEG
 reflow_flag: dbit 1
 soak_flag: dbit 1
@@ -117,6 +132,11 @@ PB4: dbit 1
 PB5: dbit 1
 PB6: dbit 1
 PB7: dbit 1
+
+
+BSEG
+s_flag: dbit 1 ; set to 1 every time a second has passed
+
 
 ; MATH32
 $NOLIST
@@ -204,6 +224,26 @@ Init_All:
 	anl	TMOD,#0xF0 ; Clear the configuration bits for timer 0
 	orl	TMOD,#0x01 ; Timer 0 in Mode 1: 16-bit timer
 	
+	
+	;Timer 2 for pulse
+	; Initialize timer 2 for periodic interrupts
+	mov T2CON, #0 ; Stop timer/counter.  Autoreload mode.
+	mov TH2, #high(TIMER2_RELOAD)
+	mov TL2, #low(TIMER2_RELOAD)
+	; Set the reload value
+	mov T2MOD, #0b1010_0000 ; Enable timer 2 autoreload, and clock divider is 16
+	mov RCMP2H, #high(TIMER2_RELOAD)
+	mov RCMP2L, #low(TIMER2_RELOAD)
+	; Init the free running 10 ms counter to zero
+	mov pwm_counter, #0
+	; Enable the timer and interrupts
+	orl EIE, #0x80 ; Enable timer 2 interrupt ET2=1
+    setb TR2  ; Enable timer 2
+
+	setb EA ; Enable global interrupts
+	
+	
+	
 	; Initialize the pin used by the ADC (P1.1) as input.
 	orl	P1M1, #0b00000010
 	anl	P1M2, #0b11111101
@@ -226,6 +266,33 @@ Init_All:
 	orl ADCCON1, #0x01 ; Enable ADC
 	
 	ret
+	
+	
+;---------------------------------;
+; ISR for timer 2                 ;
+;---------------------------------;
+Timer2_ISR:
+	clr TF2  ; Timer 2 doesn't clear TF2 automatically. Do it in the ISR.  It is bit addressable.
+	push psw
+	push acc
+	
+	inc pwm_counter
+	clr c
+	mov a, pwm
+	subb a, pwm_counter ; If pwm_counter <= pwm then c=1
+	cpl c
+	mov PWM_OUT, c
+	
+	mov a, pwm_counter
+	cjne a, #100, Timer2_ISR_done
+	mov pwm_counter, #0
+	inc seconds ; It is super easy to keep a seconds count here
+	setb s_flag
+
+Timer2_ISR_done:
+	pop acc
+	pop psw
+	reti
 
 ; Flash Memory Subroutines
 ;******************************************************************************
@@ -471,11 +538,11 @@ main:
     Set_Cursor(1, 1)
     Send_Constant_String(#temperature_message)
 	Set_Cursor(2,1)
-	Send_Constant_String(#soak_message)
+	Send_Constant_String(#reflow_message)
 	Set_Cursor(2,5)
 	Send_Constant_String(#comma)
 	Set_Cursor(2,8)
-	Send_Constant_String(#reflow_message)
+	Send_Constant_String(#soak_message)
 	Set_Cursor(2,12)
 	Send_Constant_String(#comma)
 
@@ -762,6 +829,7 @@ FSM1_state0:
 	Set_Cursor(2, 16)
 	Send_Constant_String(#state0)
 	mov pwm, #0
+	mov sec, #0
 	;jb PB0, FSM1_state0_done
 	;mov FSM1_state, #1
 FSM1_state0_done:
@@ -776,8 +844,20 @@ FSM1_state1:
 	clr P1.6
 	
 	mov pwm, #100
-	mov sec, #0
 	
+	;Failsafe. Returns to state 0 if temperature is not reached in 6 seconds (should be 60 idk how to do it)
+	mov a, sec
+	add a, #1
+	mov sec, a
+
+	mov a, #60
+	clr c
+	subb a, sec
+	jnc FSM1_state1_continue
+	mov FSM1_state, #0
+	ljmp Forever
+
+FSM1_state1_continue:
 	; These two lines are temporary. temp should be read from the thermocouple wire
 	mov temp_soak, #100
 	

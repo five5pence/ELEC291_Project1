@@ -1,3 +1,5 @@
 *.hex
 *.lst
 *.bat
+Flash_Storage.asm
+serial_test.asm

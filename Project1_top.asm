@@ -92,7 +92,7 @@ bcd: ds 5
 DSEG
 pwm: ds 1
 state: ds 1
-temp_soak: ds 1
+Temp_soak: ds 1
 Time_soak: ds 1
 Temp_refl: ds 1
 Time_refl: ds 1
@@ -256,43 +256,43 @@ Save_Variables:
 	MOV IAPCN, #BYTE_PROGRAM_AP
 	MOV IAPAH, #3fh
 	
-	;Load 3f80h with temp_soak
-	MOV IAPAL, #80h
-	MOV IAPFD, temp_soak
+	;Load 3f81h with temp_soak
+	MOV IAPAL, #81h
+	MOV IAPFD, Temp_soak
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG,#00000001b ; Basically, this executes the write to flash memory
 	
 	;Load 3f81h with Time_soak
-	MOV IAPAL, #81h
+	MOV IAPAL, #82h
 	MOV IAPFD, Time_soak
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG,#00000001b
 	
 	;Load 3f82h with Temp_refl
-	MOV IAPAL, #82h
+	MOV IAPAL, #83h
 	MOV IAPFD, Temp_refl
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG,#00000001b
 	
 	;Load 3f83h with Time_refl
-	MOV IAPAL, #83h
+	MOV IAPAL, #84h
 	MOV IAPFD, Time_refl
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG,#00000001b
 
 	;Load 3f84h with 55h
-	MOV IAPAL,#84h
+	MOV IAPAL,#85h
 	MOV IAPFD, #55h
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG, #00000001b
 
 	;Load 3f85h with aah (spacer value indicating EOF, will load if something funny happens)
-	MOV IAPAL, #85h
+	MOV IAPAL, #86h
 	MOV IAPFD, #0aah
 	MOV TA, #0aah
 	MOV TA, #55h
@@ -310,7 +310,7 @@ Save_Variables:
 	ret
 
 Load_Variables:
-	mov dptr, #0x3f84  ; First key value location.  Must be 0x55
+	mov dptr, #0x3f85  ; First key value location.  Must be 0x55
 	clr a
 	movc a, @a+dptr
 	cjne a, #0x55, Load_Defaults
@@ -319,10 +319,10 @@ Load_Variables:
 	movc a, @a+dptr
 	cjne a, #0xaa, Load_Defaults
 	
-	mov dptr, #0x3f80
+	mov dptr, #0x3f81
 	clr a
 	movc a, @a+dptr
-	mov temp_soak, a
+	mov Temp_soak, a
 	
 	inc dptr
 	clr a
@@ -341,10 +341,10 @@ Load_Variables:
 	ret
 
 Load_Defaults:
-	mov temp_soak, #1
-	mov Time_soak, #2
-	mov Temp_refl, #3
-	mov Time_refl, #4
+	mov Temp_soak, #200
+	mov Time_soak, #0x60
+	mov Temp_refl, #200
+	mov Time_refl, #0x45
 	ret
 
 wait_1ms:
@@ -473,10 +473,7 @@ main:
 	Send_Constant_String(#comma)
 
 	mov FSM1_state, #0
-    mov Temp_soak, #200
-	mov Time_soak, #0x60
-	mov Temp_refl, #200
-	mov Time_refl, #0x45
+	lcall Load_Variables
 	mov sec, #0
 
 	clr reflow_flag ; start on temp
@@ -704,6 +701,7 @@ FSM1:
 
 ; off state. Should go to state 1 when start button is pressed (Button 8 right now)
 FSM1_state0:
+	lcall Save_Variables
 	cjne a, #0, FSM1_state1
 	Set_Cursor(2, 16)
 	Send_Constant_String(#state0)

@@ -37,9 +37,17 @@ BAUD              EQU 115200 ; Baud rate of UART in bps
 TIMER1_RELOAD     EQU (0x100-(CLK/(16*BAUD)))
 TIMER0_RELOAD_1MS EQU (0x10000-(CLK/1000))
 
+TIMER2_RATE         EQU 100      ; 100Hz or 10ms
+TIMER2_RELOAD       EQU (65536-(CLK/(16*TIMER2_RATE))) ; Need to change timer 2 input divide to 16 in T2MOD
+
+
+;pwn
+PWM_OUT    EQU P1.2 ; Logic 1=oven on
+
 ORG 0x0000
     ljmp main
-
+ORG 0x002B
+	ljmp Timer2_ISR
 ; Initialization Messages
 temperature_message:     db 'O=       J=     ', 0
 comma              :     db ','               , 0
@@ -92,7 +100,7 @@ bcd: ds 5
 DSEG
 pwm: ds 1
 state: ds 1
-Temp_soak: ds 1
+temp_soak: ds 1
 Time_soak: ds 1
 Temp_refl: ds 1
 Time_refl: ds 1
@@ -102,6 +110,13 @@ temp: ds 2
 
 
 FSM1_state: ds 1
+
+
+;for pwm
+pwm_counter:  ds 1 ; Free running counter 0, 1, 2, ..., 100, 0
+
+seconds:      ds 1 ; a seconds counter attached to Timer 2 ISR
+
 
 BSEG
 reflow_flag: dbit 1
@@ -117,6 +132,11 @@ PB4: dbit 1
 PB5: dbit 1
 PB6: dbit 1
 PB7: dbit 1
+
+
+BSEG
+s_flag: dbit 1 ; set to 1 every time a second has passed
+
 
 ; MATH32
 $NOLIST
@@ -204,6 +224,26 @@ Init_All:
 	anl	TMOD,#0xF0 ; Clear the configuration bits for timer 0
 	orl	TMOD,#0x01 ; Timer 0 in Mode 1: 16-bit timer
 	
+	
+	;Timer 2 for pulse
+	; Initialize timer 2 for periodic interrupts
+	mov T2CON, #0 ; Stop timer/counter.  Autoreload mode.
+	mov TH2, #high(TIMER2_RELOAD)
+	mov TL2, #low(TIMER2_RELOAD)
+	; Set the reload value
+	mov T2MOD, #0b1010_0000 ; Enable timer 2 autoreload, and clock divider is 16
+	mov RCMP2H, #high(TIMER2_RELOAD)
+	mov RCMP2L, #low(TIMER2_RELOAD)
+	; Init the free running 10 ms counter to zero
+	mov pwm_counter, #0
+	; Enable the timer and interrupts
+	orl EIE, #0x80 ; Enable timer 2 interrupt ET2=1
+    setb TR2  ; Enable timer 2
+
+	setb EA ; Enable global interrupts
+	
+	
+	
 	; Initialize the pin used by the ADC (P1.1) as input.
 	orl	P1M1, #0b00000010
 	anl	P1M2, #0b11111101
@@ -226,6 +266,33 @@ Init_All:
 	orl ADCCON1, #0x01 ; Enable ADC
 	
 	ret
+	
+	
+;---------------------------------;
+; ISR for timer 2                 ;
+;---------------------------------;
+Timer2_ISR:
+	clr TF2  ; Timer 2 doesn't clear TF2 automatically. Do it in the ISR.  It is bit addressable.
+	push psw
+	push acc
+	
+	inc pwm_counter
+	clr c
+	mov a, pwm
+	subb a, pwm_counter ; If pwm_counter <= pwm then c=1
+	cpl c
+	mov PWM_OUT, c
+	
+	mov a, pwm_counter
+	cjne a, #100, Timer2_ISR_done
+	mov pwm_counter, #0
+	inc seconds ; It is super easy to keep a seconds count here
+	setb s_flag
+
+Timer2_ISR_done:
+	pop acc
+	pop psw
+	reti
 
 ; Flash Memory Subroutines
 ;******************************************************************************
@@ -256,43 +323,43 @@ Save_Variables:
 	MOV IAPCN, #BYTE_PROGRAM_AP
 	MOV IAPAH, #3fh
 	
-	;Load 3f81h with temp_soak
-	MOV IAPAL, #83h
-	MOV IAPFD, Temp_soak
+	;Load 3f80h with temp_soak
+	MOV IAPAL, #80h
+	MOV IAPFD, temp_soak
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG,#00000001b ; Basically, this executes the write to flash memory
 	
 	;Load 3f81h with Time_soak
-	MOV IAPAL, #84h
+	MOV IAPAL, #81h
 	MOV IAPFD, Time_soak
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG,#00000001b
 	
 	;Load 3f82h with Temp_refl
-	MOV IAPAL, #85h
+	MOV IAPAL, #82h
 	MOV IAPFD, Temp_refl
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG,#00000001b
 	
 	;Load 3f83h with Time_refl
-	MOV IAPAL, #86h
+	MOV IAPAL, #83h
 	MOV IAPFD, Time_refl
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG,#00000001b
 
 	;Load 3f84h with 55h
-	MOV IAPAL,#87h
+	MOV IAPAL,#84h
 	MOV IAPFD, #55h
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG, #00000001b
 
 	;Load 3f85h with aah (spacer value indicating EOF, will load if something funny happens)
-	MOV IAPAL, #88h
+	MOV IAPAL, #85h
 	MOV IAPFD, #0aah
 	MOV TA, #0aah
 	MOV TA, #55h
@@ -310,7 +377,7 @@ Save_Variables:
 	ret
 
 Load_Variables:
-	mov dptr, #0x3f87  ; First key value location.  Must be 0x55
+	mov dptr, #0x3f84  ; First key value location.  Must be 0x55
 	clr a
 	movc a, @a+dptr
 	cjne a, #0x55, Load_Defaults
@@ -319,10 +386,10 @@ Load_Variables:
 	movc a, @a+dptr
 	cjne a, #0xaa, Load_Defaults
 	
-	mov dptr, #0x3f83
+	mov dptr, #0x3f80
 	clr a
 	movc a, @a+dptr
-	mov Temp_soak, a
+	mov temp_soak, a
 	
 	inc dptr
 	clr a
@@ -341,10 +408,10 @@ Load_Variables:
 	ret
 
 Load_Defaults:
-	mov Temp_soak, #0xC8
-	mov Time_soak, #0x60
-	mov Temp_refl, #0xC8
-	mov Time_refl, #0x45
+	mov temp_soak, #1
+	mov Time_soak, #2
+	mov Temp_refl, #3
+	mov Time_refl, #4
 	ret
 
 wait_1ms:
@@ -473,7 +540,10 @@ main:
 	Send_Constant_String(#comma)
 
 	mov FSM1_state, #0
-	lcall Load_Variables
+    mov Temp_soak, #200
+	mov Time_soak, #0x60
+	mov Temp_refl, #200
+	mov Time_refl, #0x45
 	mov sec, #0
 
 	clr reflow_flag ; start on temp
@@ -574,7 +644,7 @@ start_stop:
 	Set_cursor(2,2)
 	lcall SendToLCD
 	clr a
-	mov a, Temp_soak
+	mov a, Time_soak
 	Set_cursor(2,9)
 	lcall SendToLCD
 	clr a
@@ -582,8 +652,6 @@ start_stop:
 	Display_BCD(Time_refl)
 	Set_Cursor(2,13)
 	Display_BCD(Time_soak)
-	lcall Save_Variables ; Save variables in flash memory
-	
 	jb PB0, continue
 
 turn_on:
@@ -679,7 +747,7 @@ continue:
 	mov y+0, amb_temp+0
 	mov y+1, amb_temp+1
 	mov y+2, amb_temp+2
-	mov y+3, amb_temp+3
+	mov y+3, amb_temp+3S
 	lcall add32
 	
 	; Convert to BCD and display
@@ -703,7 +771,6 @@ FSM1:
 
 ; off state. Should go to state 1 when start button is pressed (Button 8 right now)
 FSM1_state0:
-	lcall Save_Variables
 	cjne a, #0, FSM1_state1
 	Set_Cursor(2, 16)
 	Send_Constant_String(#state0)
@@ -725,9 +792,9 @@ FSM1_state1:
 	mov sec, #0
 	
 	; These two lines are temporary. temp should be read from the thermocouple wire
-	mov Temp_soak, #100
+	mov temp_soak, #100
 	
-	mov a, Temp_soak
+	mov a, temp_soak
 	setb c
 	subb a, temp
 	jnc FSM1_state1_done
@@ -815,6 +882,7 @@ FSM1_state5:
 	jc FSM1_state5_done
 	mov FSM1_state,#0
 FSM1_state5_done:
+	lcall Save_Variables ; Save variables in flash memory
 	ljmp Forever
 	
 

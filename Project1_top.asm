@@ -100,14 +100,8 @@ bcd: ds 5
 DSEG
 pwm: ds 1
 state: ds 1
-Temp_soak: ds 1
-Time_soak: ds 1
-Temp_refl: ds 1
-Time_refl: ds 1
-
 sec: ds 1
 temp: ds 2
-
 
 FSM1_state: ds 1
 
@@ -117,6 +111,11 @@ pwm_counter:  ds 1 ; Free running counter 0, 1, 2, ..., 100, 0
 
 seconds:      ds 1 ; a seconds counter attached to Timer 2 ISR
 
+DSEG at 0x30
+Temp_soak: ds 1
+Time_soak: ds 1
+Temp_refl: ds 1
+Time_refl: ds 1
 
 BSEG
 reflow_flag: dbit 1
@@ -409,10 +408,10 @@ Load_Variables:
 	ret
 
 Load_Defaults:
-	mov Temp_soak, #200
-	mov Time_soak, #60
-	mov Temp_refl, #200
-	mov Time_refl, #45
+	mov Temp_soak, #0xC8 ; 200 in HEX
+	mov Time_soak, #0x3C ; 60 in HEX
+	mov Temp_refl, #0xC8 ; 200 in HEX
+	mov Time_refl, #0x2D ; 45 in HEX
 	ret
 
 putchar:

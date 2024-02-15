@@ -146,14 +146,14 @@
 00CE 43A401     148            ORL IAPTRG,#00000001b
 00D1            149   
 00D1            150            ;Load 3f84h with 55h
-00D1 75A685     151            MOV IAPAL,#85h
+00D1 75A684     151            MOV IAPAL,#84h
 00D4 75AE55     152            MOV IAPFD, #55h
 00D7 75C7AA     153            MOV TA, #0aah
 00DA 75C755     154            MOV TA, #55h
 00DD 43A401     155            ORL IAPTRG, #00000001b
 00E0            156   
 00E0            157            ;Load 3f85h with aah (spacer value indicating EOF, will load if something funny happens)
-00E0 75A686     158            MOV IAPAL, #86h
+00E0 75A685     158            MOV IAPAL, #85h
 00E3 75AEAA     159            MOV IAPFD, #0aah
 00E6 75C7AA     160            MOV TA, #0aah
 00E9 75C755     161            MOV TA, #55h
@@ -171,7 +171,7 @@
 0103 22         173            ret
 0104            174   
 0104            175   Load_Variables:
-0104 903F85     176            mov dptr, #0x3f85  ; First key value location.  Must be 0x55
+0104 903F84     176            mov dptr, #0x3f84  ; First key value location.  Must be 0x55
 0107 E4         177            clr a
 0108 93         178            movc a, @a+dptr
 0109 B4551D     179            cjne a, #0x55, Load_Defaults

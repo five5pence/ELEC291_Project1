@@ -148,14 +148,14 @@ Save_Variables:
 	ORL IAPTRG,#00000001b
 
 	;Load 3f84h with 55h
-	MOV IAPAL,#85h
+	MOV IAPAL,#84h
 	MOV IAPFD, #55h
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG, #00000001b
 
 	;Load 3f85h with aah (spacer value indicating EOF, will load if something funny happens)
-	MOV IAPAL, #86h
+	MOV IAPAL, #85h
 	MOV IAPFD, #0aah
 	MOV TA, #0aah
 	MOV TA, #55h
@@ -173,7 +173,7 @@ Save_Variables:
 	ret
 
 Load_Variables:
-	mov dptr, #0x3f85  ; First key value location.  Must be 0x55
+	mov dptr, #0x3f84  ; First key value location.  Must be 0x55
 	clr a
 	movc a, @a+dptr
 	cjne a, #0x55, Load_Defaults

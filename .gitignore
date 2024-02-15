@@ -6,3 +6,5 @@ serial_test.asm
 Flash_Storage.asm
 Flash_Storage.hex
 Flash_Storage.lst
+Project1_top.hex
+Project1_top.lst

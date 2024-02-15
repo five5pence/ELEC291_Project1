@@ -100,7 +100,7 @@ bcd: ds 5
 DSEG
 pwm: ds 1
 state: ds 1
-temp_soak: ds 1
+Temp_soak: ds 1
 Time_soak: ds 1
 Temp_refl: ds 1
 Time_refl: ds 1
@@ -178,7 +178,16 @@ SendToLCD:
 	orl a, #0x30
 	lcall ?WriteData
 	ret
-
+; Send 2 digits to LCD
+Send2ToLCD:
+	mov b,#10
+	div ab
+	orl a, #0x30
+	lcall ?WriteData
+	mov a, b
+	orl a, #0x30
+	lcall ?WriteData
+	ret
 
 ; Formatting to display thermocouple temperature
 ; Display: 0000.00
@@ -324,9 +333,9 @@ Save_Variables:
 	MOV IAPCN, #BYTE_PROGRAM_AP
 	MOV IAPAH, #3fh
 	
-	;Load 3f80h with temp_soak
+	;Load 3f80h with Temp_soak
 	MOV IAPAL, #80h
-	MOV IAPFD, temp_soak
+	MOV IAPFD, Temp_soak
 	MOV TA, #0aah
 	MOV TA, #55h
 	ORL IAPTRG,#00000001b ; Basically, this executes the write to flash memory
@@ -390,7 +399,7 @@ Load_Variables:
 	mov dptr, #0x3f80
 	clr a
 	movc a, @a+dptr
-	mov temp_soak, a
+	mov Temp_soak, a
 	
 	inc dptr
 	clr a
@@ -409,10 +418,10 @@ Load_Variables:
 	ret
 
 Load_Defaults:
-	mov temp_soak, #1
-	mov Time_soak, #2
-	mov Temp_refl, #3
-	mov Time_refl, #4
+	mov Temp_soak, #200
+	mov Time_soak, #60
+	mov Temp_refl, #235
+	mov Time_refl, #45
 	ret
 
 putchar:
@@ -548,15 +557,9 @@ main:
 	Send_Constant_String(#comma)
 
 	mov FSM1_state, #0
-    mov Temp_soak, #20
-	mov Time_soak, #0x10
-	mov Temp_refl, #20
-	mov Time_refl, #0x10
-	; lcall Load_Variables
-    ; mov Temp_soak, #200
-	; mov Time_soak, #0x60
-	; mov Temp_refl, #200
-	; mov Time_refl, #0x45
+
+	lcall Load_Variables ; Load variables from flash memory
+
 	mov sec, #0
 	mov loop_ten_times, #0
 
@@ -620,7 +623,7 @@ check_reflow_toggle:
 
 turn_reflow_to_temp:
 	; will use the same logic for the other pushbuttons
-; This example will use temp_soak for this example
+; This example will use Temp_soak for this example
 
 	decrease_reflow_temp:
 	jb PB6, increase_reflow_temp
@@ -661,10 +664,13 @@ start_stop:
 	Set_cursor(2,9)
 	lcall SendToLCD
 	clr a
+	mov a, Time_refl
 	Set_Cursor(2,6)
-	Display_BCD(Time_refl)
+	lcall Send2ToLCD ; Call subroutine to display 2 digit binary as ASCII on LCD
+	clr a
+	mov a, Time_soak
 	Set_Cursor(2,13)
-	Display_BCD(Time_soak)
+	lcall Send2ToLCD
 	jb PB0, continue
 
 turn_on:
